@@ -29,4 +29,4 @@ DeviceMon is a Windows Driver that implemented Virtualization Based PCI Device M
    
  # Windows 10 RS4 Test demo 
  A demo has captured a malware that starting the attack and dumping the SPI Flash ROM.
-  <img scr="https://user-images.githubusercontent.com/22551808/64902638-dbd64280-d65f-11e9-97a1-4535a446daef.PNG" width="70%" height="70%"> </img>
+ <img src="https://user-images.githubusercontent.com/22551808/64902638-dbd64280-d65f-11e9-97a1-4535a446daef.PNG" width="70%" height="70%"> </img>
