@@ -37,43 +37,46 @@ DeviceMon is a Windows Driver that intercept the communication between your PCI 
  # Test it
  
   * Step 1: Collect the following information of your testing device.
-  ``` 
-  typedef struct _PCI_MONITOR_CFG
-	 {
-		UINT8	BusNumber;			//
-		UINT8	DeviceNum;			//
-		UINT8	FuncNum;			//
-		UINT8	BarOffset[6];		// BAR offset in PCI Config , check your chipset datasheet
-		UINT8	BarCount;			// Number of BAR in PCI Config , check your chipset datasheet
-    //...
-	}PCIMONITORCFG, *PPCIMONITORCFG;
+``` 
+typedef struct _PCI_MONITOR_CFG
+{
+	UINT8	BusNumber;		//
+	UINT8	DeviceNum;		//
+	UINT8	FuncNum;		//
+	UINT8	BarOffset[6];		// BAR offset in PCI Config , check your chipset datasheet
+	UINT8	BarCount;		// Number of BAR in PCI Config , check your chipset datasheet
+	//...
+}PCIMONITORCFG, *PPCIMONITORCFG;
  
  ```
  * Step 2: Construct it and fill into the global config as follow
  ```
- PCIMONITORCFG SpiDeviceInfo = {
-			SPI_INTERFACE_BUS_NUMBER,
-			SPI_INTERFACE_DEVICE_NUMBER,
-			SPI_INTERFACE_FUNC_NUMBER ,
-			{
-				SPI_INTERFACE_SPIBAR_OFFSET,
-			},
-			1,                          //SPI device has only one BAR 
-			{ 0 , 0 , 0 , 0 , 0, 0 },   //automatically filled when initial monitor. Just fill 6's zero 
-			SpiHandleMmioAccessCallback,
-	};
-
-	PCIMONITORCFG g_MonitorDeviceList[] =
+ PCIMONITORCFG SpiDeviceInfo =
+ {
+	SPI_INTERFACE_BUS_NUMBER,
+	SPI_INTERFACE_DEVICE_NUMBER,
+	SPI_INTERFACE_FUNC_NUMBER ,
 	{
-		SpiDeviceInfo,
-	};
+	  SPI_INTERFACE_SPIBAR_OFFSET,
+	},
+	1,                          	//SPI device has only one BAR 
+	{ 0 , 0 , 0 , 0 , 0, 0 },  	//automatically filled when initial monitor. Just fill 6's zero 
+	SpiHandleMmioAccessCallback,
+};
+```
+```
+//Put your device config here. Engine will be able to distract them automatically.
+PCIMONITORCFG g_MonitorDeviceList[] =
+{
+    SpiDeviceInfo, 
+};
  
  ```
  * Step 3: Implement your callback with your device logic 
  It will be eventually get invoke your callback on access (R/W) with the following prototype
  
  ```
- 	typedef bool(*MMIOCALLBACK)(GpRegisters*  Context,
+ typedef bool(*MMIOCALLBACK)(GpRegisters*  Context,
 		ULONG_PTR InstPointer,
 		ULONG_PTR MmioAddress,
 		ULONG		  InstLen,
