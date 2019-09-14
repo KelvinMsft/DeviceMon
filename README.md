@@ -1,6 +1,6 @@
 # DeviceMon
 
-DeviceMon is a Windows Driver that implemented Virtualization Based PCI Device Monitor.
+DeviceMon is a Windows Driver that intercept the communication between your PCI devices and kernel driver.
 
 # Environment
   * Visual Studio 2015 update 3 
@@ -9,6 +9,7 @@ DeviceMon is a Windows Driver that implemented Virtualization Based PCI Device M
   * VMware 12 with EPT environment. 
   * Supports Multi-core processor environment
   * Test environment with Windows 10 x64 RS4
+  * With VT-x enabled machine
   
 # Description
  DeviceMon will be on-going developed for support more PCI devices, and currently support monitoring SPI controller behavior, with SPI behavior monitoring, anyone send a cycle to SPI controller it can be captured by DeviceMon, means, in case of someone whose are trying to attack the Flash ROM, theoretically could be capture by DeviceMon. By intercepting a MMIO translation path, the communication between driver and devices could be easily exposed.
