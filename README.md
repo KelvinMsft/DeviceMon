@@ -79,8 +79,8 @@ PCIMONITORCFG g_MonitorDeviceList[] =
  typedef bool(*MMIOCALLBACK)(GpRegisters*  Context,
 		ULONG_PTR InstPointer,
 		ULONG_PTR MmioAddress,
-		ULONG		  InstLen,
-		ULONG		   Access
+		ULONG	  InstLen,
+		ULONG	  Access
 	);
  
  ``` 
