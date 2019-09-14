@@ -9,10 +9,9 @@ DeviceMon is a Windows Driver that intercept the communication between your PCI 
   * Visual Studio 2015 update 3 
   * Windows SDK 10
   * Windowr Driver Kit 10 
-  * VMware 12 with EPT environment. 
-  * Supports Multi-core processor environment
-  * Test environment with Windows 10 x64 RS4
+  * Windows 10 x64 RS4
   * With VT-x enabled machine
+  * Series 100 / 200 / 300 Chipset's SPI Interface
   
  # Installation
 
@@ -28,9 +27,6 @@ DeviceMon is a Windows Driver that intercept the communication between your PCI 
          
          `sc start DeviceMon`
 
-                  
-   * start a service as following screen capture with its expected output
-
 # Mechanism
 
  * With VT-x and EPT assisted, we are able to intercept the address translation between guest physical address to host physical address,
@@ -38,8 +34,56 @@ DeviceMon is a Windows Driver that intercept the communication between your PCI 
  
  <img src="https://user-images.githubusercontent.com/22551808/64904101-b8b88c80-d679-11e9-8073-3e283f4e6500.jpg" width="70%" height="70%" align="middle"> </img>
  
+ # Test it
+ 
+  * Step 1: Collect the following information of your testing device.
+  ``` 
+  typedef struct _PCI_MONITOR_CFG
+	 {
+		UINT8	BusNumber;			//
+		UINT8	DeviceNum;			//
+		UINT8	FuncNum;			//
+		UINT8	BarOffset[6];		// BAR offset in PCI Config , check your chipset datasheet
+		UINT8	BarCount;			// Number of BAR in PCI Config , check your chipset datasheet
+    //...
+	}PCIMONITORCFG, *PPCIMONITORCFG;
+ 
+ ```
+ * Step 2: Construct it and fill into the global config as follow
+ ```
+ PCIMONITORCFG SpiDeviceInfo = {
+			SPI_INTERFACE_BUS_NUMBER,
+			SPI_INTERFACE_DEVICE_NUMBER,
+			SPI_INTERFACE_FUNC_NUMBER ,
+			{
+				SPI_INTERFACE_SPIBAR_OFFSET,
+			},
+			1,                          //SPI device has only one BAR 
+			{ 0 , 0 , 0 , 0 , 0, 0 },   //automatically filled when initial monitor. Just fill 6's zero 
+			SpiHandleMmioAccessCallback,
+	};
 
- # Windows 10 RS4 Test demo 
+	PCIMONITORCFG g_MonitorDeviceList[] =
+	{
+		SpiDeviceInfo,
+	};
+ 
+ ```
+ * Step 3: Implement your callback with your device logic 
+ It will be eventually get invoke your callback on access (R/W) with the following prototype
+ 
+ ```
+ 	typedef bool(*MMIOCALLBACK)(GpRegisters*  Context,
+		ULONG_PTR InstPointer,
+		ULONG_PTR MmioAddress,
+		ULONG		  InstLen,
+		ULONG		   Access
+	);
+ 
+ ``` 
+Because huge differences between PCI devices, you have to check device config from your data-sheet from your hardware manufacture.
+
+# Windows 10 RS4 Test demo 
  A demo has captured a malware that starting the attack and dumping the SPI Flash ROM.
  Also, as following figure shown, two binary compared there's no any effect on dumped SPI Flash when VMM in the middle.
  
