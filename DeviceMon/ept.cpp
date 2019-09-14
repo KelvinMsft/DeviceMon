@@ -11,7 +11,7 @@
 #include "log.h"
 #include "util.h"
 #include "performance.h"
-#include "SpiMon.h"
+#include "DevMon.h"
 
 extern "C" {
 ////////////////////////////////////////////////////////////////////////////////

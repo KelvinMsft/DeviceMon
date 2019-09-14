@@ -14,7 +14,7 @@
 #include "log.h"
 #include "util.h"
 #include "vmm.h"
-#include "SpiMon.h"
+#include "DevMon.h"
 extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -166,7 +166,7 @@ _Use_decl_annotations_ NTSTATUS VmInitialization() {
     return status;
   }
 
-  status = SpiEnableMonitor();
+  status = DmEnableMonitor();
   HYPERPLATFORM_LOG_DEBUG("[SPI] status= %x \r\n", status);
   if(!NT_SUCCESS(status)){
 	  UtilForEachProcessor(VmpStopVm, nullptr);
@@ -943,7 +943,7 @@ _Use_decl_annotations_ void VmTermination() {
   PAGED_CODE()
 
   HYPERPLATFORM_LOG_INFO("Uninstalling VMM.");
-  SpiDisableMonitor();
+  DmDisableMonitor();
 
   auto status = UtilForEachProcessor(VmpStopVm, nullptr);
   if (NT_SUCCESS(status)) {

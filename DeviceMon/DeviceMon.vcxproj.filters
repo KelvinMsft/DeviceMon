@@ -52,7 +52,10 @@
     <ClCompile Include="hotplug_callback.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SpiMon.cpp">
+    <ClCompile Include="DevMon.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Spi.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -102,7 +105,10 @@
     <ClInclude Include="power_callback.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SpiMon.h">
+    <ClInclude Include="DevMon.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Spi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

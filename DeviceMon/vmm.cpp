@@ -13,7 +13,7 @@
 #include "log.h"
 #include "util.h"
 #include "performance.h"
-#include "SpiMon.h"
+#include "DevMon.h"
 extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -356,7 +356,8 @@ static void VmmpHandleMonitorTrap(
 	GuestContext *guest_context)
 {
 	ULONG_PTR Rip = UtilVmRead64(VmcsField::kGuestRip);	
-	EptCommonEntry* ept_pt_entry = (EptCommonEntry*)guest_context->stack->processor_data->SpiBarEntry;
+
+	EptCommonEntry* ept_pt_entry = (EptCommonEntry*)guest_context->stack->processor_data->LastFaultEntry;
 
 	HYPERPLATFORM_LOG_DEBUG("[MTF] Rip= %p Entry= %p \r\n", Rip, ept_pt_entry->all);
 	
@@ -366,7 +367,7 @@ static void VmmpHandleMonitorTrap(
 
 	UtilInveptGlobal();
 	
-	SpiSetMonitorTrapFlag(nullptr, false);
+	DmSetMonitorTrapFlag(false);
 }
 
 // Interrupt
@@ -1239,11 +1240,11 @@ _Use_decl_annotations_ static void VmmpHandleVmCall(
       VmmpIndicateSuccessfulVmcall(guest_context);
       break;
 	case HypercallNumber::kEnableVmmDeviceMonitor:
-		guest_context->stack->processor_data->SpiBarEntry = SpiEnableSpiMonitor(guest_context->stack->processor_data->ept_data);
+		DmEnableDeviceMonitor(guest_context->stack->processor_data->ept_data);
 		VmmpIndicateSuccessfulVmcall(guest_context);
 	break;
 	case HypercallNumber::kDisableVmmDeviceMonitor:
-		SpiDisableSpiMonitor(guest_context->stack->processor_data->ept_data);
+		DmDisableDeviceMonitor(guest_context->stack->processor_data->ept_data);
 		VmmpIndicateSuccessfulVmcall(guest_context);
 	break;
   }
@@ -1278,22 +1279,20 @@ bool VmmpHandleMmio(GuestContext* guest_context)
 	const auto fault_address = UtilVmRead(VmcsField::kGuestPhysicalAddress);
 	ULONG Access = 0;
 
-	
+	if (!DmIsMonitoredDevice((ULONG)fault_address))
+	{
+		return false;
+	}
+
 	auto fault_entry = EptGetEptPtEntry(guest_context->stack->processor_data->ept_data, fault_address);
-	auto ept_pt_entry = (EptCommonEntry*)guest_context->stack->processor_data->SpiBarEntry;
-	if (!fault_entry || !ept_pt_entry)
+	if (!fault_entry || !fault_entry->all)
 	{
 		return false;
 	}
 
-	if (fault_entry->all != ept_pt_entry->all || fault_entry != ept_pt_entry)
-	{
-		return false;
-	}
-
-	ept_pt_entry->fields.execute_access = true;
-	ept_pt_entry->fields.read_access    = true;
-	ept_pt_entry->fields.write_access   = true;
+	fault_entry->fields.execute_access = true;
+	fault_entry->fields.read_access    = true;
+	fault_entry->fields.write_access   = true;
 	
 	UtilInveptGlobal();
 
@@ -1306,14 +1305,14 @@ bool VmmpHandleMmio(GuestContext* guest_context)
 		Access = 0x2;
 	}
  	
-	 
-
-	SpiHandleMmioAccess(guest_context->gp_regs, fault_rip, fault_address,
+	DmExecuteCallback(guest_context->gp_regs, fault_rip, fault_address,
 		(ULONG)UtilVmRead(VmcsField::kVmExitInstructionLen),
 		Access
 	);
 	 
-	SpiSetMonitorTrapFlag(nullptr, true);
+	guest_context->stack->processor_data->LastFaultEntry = fault_entry;
+
+	DmSetMonitorTrapFlag(true);
 
 	return true;
 }

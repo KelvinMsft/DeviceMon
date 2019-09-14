@@ -17,7 +17,7 @@
 #include "util.h"
 #include "vm.h"
 #include "performance.h"
-#include "SpiMon.h"
+#include "DevMon.h"
 extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 //
