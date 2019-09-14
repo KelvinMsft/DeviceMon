@@ -24,6 +24,9 @@ DeviceMon is a Windows Driver that implemented Virtualization Based PCI Device M
    *  Install DeviceMon.sys 
    
          `sc create DeviceMon type= kernel binPath= C:\DeviceMon.sys`
+         
+         `sc start DeviceMon`
+
                   
    * start a service as following screen capture with its expected output
    
