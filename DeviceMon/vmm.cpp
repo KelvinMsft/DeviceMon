@@ -356,14 +356,18 @@ static void VmmpHandleMonitorTrap(
 	GuestContext *guest_context)
 {
 	ULONG_PTR Rip = UtilVmRead64(VmcsField::kGuestRip);	
-
+	
 	EptCommonEntry* ept_pt_entry = (EptCommonEntry*)guest_context->stack->processor_data->LastFaultEntry;
+
+	NT_ASSERT(ept_pt_entry);
 
 	HYPERPLATFORM_LOG_DEBUG("[MTF] Rip= %p Entry= %p \r\n", Rip, ept_pt_entry->all);
 	
 	ept_pt_entry->fields.execute_access = true;
 	ept_pt_entry->fields.write_access = false;
 	ept_pt_entry->fields.read_access = false;
+
+	guest_context->stack->processor_data->LastFaultEntry = nullptr;
 
 	UtilInveptGlobal();
 	

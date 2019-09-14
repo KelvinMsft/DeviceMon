@@ -1,0 +1,12 @@
+
+.vs/DeviceMon/v14/.suo
+*.db
+*.opendb
+*.tlog
+*.obj
+*.log
+*.cer
+*.sys
+*.cat
+*.pdb
+*.inf

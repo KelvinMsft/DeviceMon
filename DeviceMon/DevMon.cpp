@@ -13,6 +13,7 @@ extern "C"
 	//////////////////////////////////////////////
 	//	Types
 	//
+
 	typedef bool(*MMIOCALLBACK)(GpRegisters*  Context,
 		ULONG_PTR InstPointer,
 		ULONG_PTR MmioAddress,
@@ -31,6 +32,10 @@ extern "C"
 		MMIOCALLBACK Callback;		// callback whenever access to this adress
 	}PCIMONITORCFG, *PPCIMONITORCFG;
 
+	//////////////////////////////////////////////
+	//	Variables
+	//
+
 	PCIMONITORCFG SpiDeviceInfo = {
 			SPI_INTERFACE_BUS_NUMBER,
 			SPI_INTERFACE_DEVICE_NUMBER,
@@ -47,11 +52,12 @@ extern "C"
 	{
 		SpiDeviceInfo,
 	};
+
 	//////////////////////////////////////////////
 	//	Implementation
 	//
 
-	ULONG64 DmGetDeviceMmioAddress(
+	ULONG64 DmGetDeviceBarAddress(
 		_In_ UINT8 BusNumber, 
 		_In_ UINT8 DeviceNumber,
 		_In_ UINT8 FunctionNumber,
@@ -60,7 +66,7 @@ extern "C"
 	{
 		PHYSICAL_ADDRESS PhysAddr = { 0 };
 
-		ULONG SpiBarPa = ReadPCICfg(
+		ULONG PciBarPa = ReadPCICfg(
 			BusNumber,
 			DeviceNumber,		//0x1F
 			FunctionNumber,     //PCI: 0x05 / LPC: 0
@@ -68,7 +74,7 @@ extern "C"
 			sizeof(ULONG)
 		);
 
-		PhysAddr.QuadPart = ((ULONG64)SpiBarPa & 0x00000000FFFFFFFF);
+		PhysAddr.QuadPart = ((ULONG64)PciBarPa & 0x00000000FFFFFFFF);
 
 		return PhysAddr.QuadPart;
 	}
@@ -112,7 +118,7 @@ extern "C"
 		EptCommonEntry*  Entry = nullptr;
 		ULONG64       PciBarPa = 0;
 
-		PciBarPa = DmGetDeviceMmioAddress(
+		PciBarPa = DmGetDeviceBarAddress(
 			Cfg->BusNumber,
 			Cfg->DeviceNum,
 			Cfg->FuncNum,
@@ -125,8 +131,7 @@ extern "C"
 			return Entry;
 		}
 
-		Cfg->BarAddress[BarIndex] = PciBarPa;
-
+		//TODO: Get BAR size by filling 0xFFFFFFFF, and monitor all pages.
 		Entry = EptGetEptPtEntry(ept_data, PciBarPa);
 
 		//Cannot find in current EPT means it is device memory.
@@ -143,10 +148,12 @@ extern "C"
 			return Entry;
 		}
 
+		Cfg->BarAddress[BarIndex] = PciBarPa;
+
 		HYPERPLATFORM_LOG_DEBUG(" + [PCI] PCIBAR Ept Entry found 0x%I64x \r\n", Entry->all);
 		return Entry;
 	}
-
+	
 	NTSTATUS DmEnableDeviceMonitor(
 		_In_ EptData* ept_data)
 	{
@@ -155,21 +162,19 @@ extern "C"
 		{
 			for (int j = 0; j < g_MonitorDeviceList[i].BarCount; j++)
 			{
-				Entry = DmGetBarEptEntry(g_MonitorDeviceList, j, ept_data);
+				Entry = DmGetBarEptEntry(&g_MonitorDeviceList[i], j, ept_data);
 				if (!Entry)
 				{
 					HYPERPLATFORM_LOG_DEBUG("- [PCI] PCIBAR ept Entry Not Found \r\n");
-					return STATUS_UNSUCCESSFUL;
+					continue;
 				}
 
-				HYPERPLATFORM_LOG_DEBUG("+ [PCI] Entry= %p BAR= %p \r\n", Entry->all, g_MonitorDeviceList[i].BarAddress[j]);
+				HYPERPLATFORM_LOG_DEBUG("+ [PCI] Entry= %p BAR= %p \r\n", 
+					Entry->all, g_MonitorDeviceList[i].BarAddress[j]);
 
-				//cause misconfig
-				Entry->fields.read_access = false;
-				Entry->fields.write_access = false;
-				Entry->fields.execute_access = true;
-
-				HYPERPLATFORM_LOG_DEBUG("+ [PCI] Entry= %p \r\n", Entry->all);
+				Entry->fields.read_access		= false;
+				Entry->fields.write_access		= false;
+				Entry->fields.execute_access	= true;
 			}
 		}
 		return STATUS_SUCCESS;
@@ -184,17 +189,16 @@ extern "C"
 		{
 			for (int j = 0; j < g_MonitorDeviceList[i].BarCount; j++)
 			{
-				Entry = DmGetBarEptEntry(g_MonitorDeviceList, j, ept_data);
+				Entry = DmGetBarEptEntry(&g_MonitorDeviceList[i], j, ept_data);
 				if (!Entry)
 				{
 					HYPERPLATFORM_LOG_DEBUG("- [PCI] PCIBAR ept Entry Not Found \r\n");
-					status = STATUS_UNSUCCESSFUL;
-					return status;
+					continue;
 				}
 
-				HYPERPLATFORM_LOG_DEBUG("+ [PCI] Entry= %p \r\n", Entry->all);
+				HYPERPLATFORM_LOG_DEBUG("+ [PCI] Entry= %p BAR= %p \r\n",
+					Entry->all, g_MonitorDeviceList[i].BarAddress[j]);
 
-				//cause misconfig
 				Entry->fields.read_access = true;
 				Entry->fields.write_access = true;
 				Entry->fields.execute_access = true;

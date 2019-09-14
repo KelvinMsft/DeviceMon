@@ -5,11 +5,11 @@
 #include "Spi.h"
 #include "log.h"
 
-char* AccessStr[2] = {
-	"Read",
-	"Write"
-};
-
+extern "C"
+{
+//////////////////////////////////////////////
+//	Types
+//
 
 typedef union _BIOS_HSFSTS_CTRL {
 	unsigned int all;
@@ -40,6 +40,16 @@ typedef struct {
 	int    size;
 	char   *name;
 } IoRegister;
+
+
+//////////////////////////////////////////////
+//	Variables
+//
+
+char* AccessStr[2] = {
+	"Read",
+	"Write"
+};
 
 IoRegister SpiBarRegister[] = {
 	{ 0x00, 4, "BFPR - BIOS Flash primary region" },
@@ -88,9 +98,6 @@ IoRegister SpiBarRegister[] = {
 	{ 0xd0, 4, "FPB - Flash Partition Boundary" },
 };
 
-
-extern "C"
-{
 char* SpiGetNameByOffset(ULONG Offset)
 {
 	char* ret = nullptr;
