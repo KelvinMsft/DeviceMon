@@ -1,0 +1,36 @@
+﻿  Building 'DeviceMon' with toolset 'WindowsKernelModeDriver10.0' and the 'Desktop' target platform.
+  Stamping x64\Debug\DeviceMon.inf [Version] section with DriverVer=09/13/2019,19.35.29.460
+  Assembling Arch\x64\x64.asm...
+  Assembling Arch\x86\x86.asm...
+  driver.cpp
+  ept.cpp
+  global_object.cpp
+  hotplug_callback.cpp
+  kernel_stl.cpp
+  log.cpp
+  performance.cpp
+  power_callback.cpp
+  SpiMon.cpp
+  util.cpp
+  vm.cpp
+  vmm.cpp
+  Generating Code...
+  DeviceMon.vcxproj -> C:\DeviceMon\x64\Debug\DeviceMon.sys
+  DeviceMon.vcxproj -> C:\DeviceMon\x64\Debug\DeviceMon.pdb (Full PDB)
+  Done Adding Additional Store
+  Successfully signed: C:\DeviceMon\x64\Debug\DeviceMon.sys
+  
+  ........................
+  Signability test complete.
+  
+  Errors:
+  None
+  
+  Warnings:
+  None
+  
+  Catalog generation complete.
+  C:\DeviceMon\x64\Debug\DeviceMon\devicemon.cat
+  Done Adding Additional Store
+  Successfully signed: C:\DeviceMon\x64\Debug\DeviceMon\devicemon.cat
+  
