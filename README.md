@@ -34,7 +34,7 @@ DeviceMon is a Windows Driver that intercept the communication between your PCI 
  
  <img src="https://user-images.githubusercontent.com/22551808/64904101-b8b88c80-d679-11e9-8073-3e283f4e6500.jpg" width="70%" height="70%" align="middle"> </img>
  
- # Test it
+ # How to use
  
   * Step 1: Collect the following information of your testing device.
 ``` 
@@ -67,6 +67,8 @@ PCIMONITORCFG SpiDeviceInfo =
   nullptr,
 };
 
+
+
 PCIMONITORCFG IntelMeDeviceInfo = 
 {
   INTEL_ME_BUS_NUMBER,	
@@ -86,6 +88,9 @@ PCIMONITORCFG IntelMeDeviceInfo =
   },
   IntelMeHandleBarCallback,
 };
+
+
+
 
 PCIMONITORCFG IntelMe2DeviceInfo = 
 {
@@ -107,6 +112,9 @@ PCIMONITORCFG IntelMe2DeviceInfo =
   IntelMeHandleBarCallback,
 };
 
+
+
+
 PCIMONITORCFG IntelMe3DeviceInfo = 
 {
   INTEL_ME_BUS_NUMBER,	
@@ -127,9 +135,11 @@ PCIMONITORCFG IntelMe3DeviceInfo =
   IntelMeHandleBarCallback,
 };
 
+
 	
 ```
 ```
+
 //Put your device config here. Engine will be able to distract them automatically.
 PCIMONITORCFG g_MonitorDeviceList[] =
 {
@@ -139,17 +149,18 @@ PCIMONITORCFG g_MonitorDeviceList[] =
   IntelMe3DeviceInfo,
 };
  
- ```
- * Step 3: Implement your callback with your device logic 
- It will be eventually get invoke your callback on access (R/W) with the following prototype
+```
+* Step 3: Implement your callback with your device logic 
+It will be eventually get invoke your callback on access (R/W) with the following prototype
  
- ```
- typedef bool(*MMIOCALLBACK)(GpRegisters*  Context,
+```
+typedef bool(*MMIOCALLBACK)(
+		GpRegisters*  Context,
 		ULONG_PTR InstPointer,
 		ULONG_PTR MmioAddress,
 		ULONG	  InstLen,
 		ULONG	  Access
-	);
+		);
  
  ``` 
 Because huge differences between PCI devices, you have to check device config from your data-sheet from your hardware manufacture.
