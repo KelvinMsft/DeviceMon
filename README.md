@@ -51,24 +51,92 @@ typedef struct _PCI_MONITOR_CFG
  ```
  * Step 2: Construct it and fill into the global config as follow
  ```
- PCIMONITORCFG SpiDeviceInfo =
- {
-	SPI_INTERFACE_BUS_NUMBER,
-	SPI_INTERFACE_DEVICE_NUMBER,
-	SPI_INTERFACE_FUNC_NUMBER ,
-	{
-	  SPI_INTERFACE_SPIBAR_OFFSET,
-	},
-	1,                          	//SPI device has only one BAR 
-	{ 0 , 0 , 0 , 0 , 0, 0 },  	//automatically filled when initial monitor. Just fill 6's zero 
-	SpiHandleMmioAccessCallback,
+PCIMONITORCFG SpiDeviceInfo = 
+{
+  SPI_INTERFACE_BUS_NUMBER,
+  SPI_INTERFACE_DEVICE_NUMBER,
+  SPI_INTERFACE_FUNC_NUMBER ,
+  {
+    SPI_INTERFACE_SPIBAR_OFFSET,
+    0,0,0,0,0
+  },
+  1,
+  { 0 , 0 , 0 , 0 , 0 , 0 },
+  SpiHandleMmioAccessCallback,
+  { 0 , 0 , 0 , 0 , 0 , 0 },
+  nullptr,
 };
+
+PCIMONITORCFG IntelMeDeviceInfo = 
+{
+  INTEL_ME_BUS_NUMBER,	
+  INTEL_ME_DEVICE_NUMBER,
+  INTEL_ME_FUNC_NUMBER ,
+  {
+    INTEL_ME_BAR_LOWER_OFFSET,
+    INTEL_ME_BAR_UPPER_OFFSET,
+    0,0,0,0,
+  },
+  1,		
+  { 0 , 0 , 0 , 0 , 0 , 0 },
+  IntelMeHandleMmioAccessCallback,
+  {
+    PCI_BAR_64BIT ,
+    0 , 0 , 0 , 0 , 0 ,
+  },
+  IntelMeHandleBarCallback,
+};
+
+PCIMONITORCFG IntelMe2DeviceInfo = 
+{
+  INTEL_ME_BUS_NUMBER,	
+  INTEL_ME_DEVICE_NUMBER,
+  INTEL_ME_2_FUNC_NUMBER ,
+  {
+    INTEL_ME_BAR_LOWER_OFFSET,
+    INTEL_ME_BAR_UPPER_OFFSET,
+    0,0,0,0,
+  },
+  1,		
+  { 0 , 0 , 0 , 0 , 0 , 0 },
+  IntelMeHandleMmioAccessCallback,
+  {
+    PCI_BAR_64BIT ,
+    0 , 0 , 0 , 0 , 0 ,
+  },
+  IntelMeHandleBarCallback,
+};
+
+PCIMONITORCFG IntelMe3DeviceInfo = 
+{
+  INTEL_ME_BUS_NUMBER,	
+  INTEL_ME_DEVICE_NUMBER,
+  INTEL_ME_3_FUNC_NUMBER ,
+  {
+    INTEL_ME_BAR_LOWER_OFFSET,
+    INTEL_ME_BAR_UPPER_OFFSET,
+    0,0,0,0,
+  },
+  1,		
+  { 0 , 0 , 0 , 0 , 0 , 0 },
+  IntelMeHandleMmioAccessCallback,
+  {
+    PCI_BAR_64BIT ,
+    0 , 0 , 0 , 0 , 0 ,
+  },
+  IntelMeHandleBarCallback,
+};
+
+	
 ```
 ```
 //Put your device config here. Engine will be able to distract them automatically.
 PCIMONITORCFG g_MonitorDeviceList[] =
 {
-    SpiDeviceInfo, 
+  SpiDeviceInfo,
+  IntelMeDeviceInfo,
+  IntelMe2DeviceInfo,
+  IntelMe3DeviceInfo,
 };
  
  ```
@@ -90,8 +158,15 @@ Because huge differences between PCI devices, you have to check device config fr
  A demo has captured a malware that starting the attack and dumping the SPI Flash ROM.
  Also, as following figure shown, two binary compared there's no any effect on dumped SPI Flash when VMM in the middle.
  
- <img src="https://user-images.githubusercontent.com/22551808/64905333-77c97380-d68b-11e9-83a7-d6e75cef5dc2.png" width="70%" height="70%" align="middle"> </img>
+ * SPI Device Monitoring
  
+ <img src="https://user-images.githubusercontent.com/22551808/64905333-77c97380-d68b-11e9-83a7-d6e75cef5dc2.png" width="70%" height="70%" align="middle"> </img>
+
+ * Intel ME Interface Driver Monitoring 
+   - https://downloadcenter.intel.com/download/26136/Intel-Management-Engine-Corporate-Driver-for-Windows-7-8-1-10-for-NUC5i5MY
+   
+ <img src="https://user-images.githubusercontent.com/22551808/64921244-b3406c80-d775-11e9-92a9-1d43a5e68a15.png" width="70%" height="70%" align="middle"> </img>
+
  Moreover, Except for the malware behavior capturing, DeviceMon is also a good helper for analysis device driver protocol. :)
  
  Request for more device monitoring is welcome. please feel free to contact via kelvin.chan@microsoft.com / kelvin1272011@gmail.com
