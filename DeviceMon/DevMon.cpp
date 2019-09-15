@@ -1,6 +1,7 @@
 // Copyright (c) 2019, Kelvin Chan. All rights reserved.
 // Use of this source code is governed by a MIT-style license that can be
 // found in the LICENSE file.
+
 #include <fltKernel.h>
 #include "ept.h"
 #include "log.h"
@@ -8,13 +9,21 @@
 #include "common.h"
 #include "util.h"
 #include "Spi.h"
+#include "Me.h"
 extern "C"
 {
 	//////////////////////////////////////////////
 	//	Types
 	//
+	#define PCI_BAR_64BIT 0x1
+	
+	typedef ULONG64 (*OFFSETMAKECALLBACK)(
+		ULONG64 UpperBAR,
+		ULONG64 LowerBAR
+	);
 
-	typedef bool(*MMIOCALLBACK)(GpRegisters*  Context,
+	typedef bool(*MMIOCALLBACK)(
+		GpRegisters*  Context,
 		ULONG_PTR InstPointer,
 		ULONG_PTR MmioAddress,
 		ULONG		  InstLen,
@@ -23,13 +32,17 @@ extern "C"
 
 	typedef struct _PCI_MONITOR_CFG
 	{
-		UINT8	BusNumber;			//
-		UINT8	DeviceNum;			//
-		UINT8	FuncNum;			//
-		UINT8	BarOffset[6];		// BAR offset in PCI Config , check your chipset datasheet
-		UINT8	BarCount;			// Number of BAR in PCI Config , check your chipset datasheet
-		ULONG64 BarAddress[6];		// Retrieved address 
-		MMIOCALLBACK Callback;		// callback whenever access to this adress
+		UINT8	BusNumber;				//
+		UINT8	DeviceNum;				//
+		UINT8	FuncNum;				//
+		UINT8	BarOffset[6];			// BAR offset in PCI Config , check your chipset datasheet
+		UINT8	BarCount;				// Number of BAR in PCI Config , check your chipset datasheet
+		ULONG64 BarAddress[6];			// Retrieved address 
+		MMIOCALLBACK Callback;			// callback whenever access to this adress
+		ULONG   BarAddressWidth[6];		// 64 -> callback2
+		OFFSETMAKECALLBACK Callback2;	// callback that indicate offset is 64bit 
+										// offset combination is compatible for those 64bit combined BAR,
+										// and it should take device-dependent bitwise operation. 
 	}PCIMONITORCFG, *PPCIMONITORCFG;
 
 	//////////////////////////////////////////////
@@ -42,15 +55,78 @@ extern "C"
 			SPI_INTERFACE_FUNC_NUMBER ,
 			{
 				SPI_INTERFACE_SPIBAR_OFFSET,
+				0,0,0,0,0
 			},
 			1,
-			{ 0 , 0 , 0 , 0 , 0, 0 },
+			{ 0 , 0 , 0 , 0 , 0 , 0 },
 			SpiHandleMmioAccessCallback,
+			{0,0,0,0,0,0},
+			nullptr,
+	};
+
+	PCIMONITORCFG IntelMeDeviceInfo = {
+		INTEL_ME_BUS_NUMBER,
+		INTEL_ME_DEVICE_NUMBER,
+		INTEL_ME_1_FUNC_NUMBER ,
+		{
+			INTEL_ME_BAR_LOWER_OFFSET,
+			INTEL_ME_BAR_UPPER_OFFSET,
+			0,0,0,0,
+		},
+		1,
+		{ 0 , 0 , 0 , 0 , 0 , 0 },
+		IntelMeHandleMmioAccessCallback,
+		{
+			PCI_BAR_64BIT , 
+			0 , 0 , 0 , 0 , 0 ,
+		},
+		IntelMeHandleBarCallback,
+	};
+
+	PCIMONITORCFG IntelMe2DeviceInfo = {
+		INTEL_ME_BUS_NUMBER,
+		INTEL_ME_DEVICE_NUMBER,
+		INTEL_ME_2_FUNC_NUMBER ,
+		{
+			INTEL_ME_BAR_LOWER_OFFSET,
+			INTEL_ME_BAR_UPPER_OFFSET,
+			0,0,0,0,
+		},
+		1,
+		{ 0 , 0 , 0 , 0 , 0 , 0 },
+		IntelMeHandleMmioAccessCallback,
+		{
+			PCI_BAR_64BIT ,
+			0 , 0 , 0 , 0 , 0 ,
+		},
+		IntelMeHandleBarCallback,
+	};
+
+	PCIMONITORCFG IntelMe3DeviceInfo = {
+		INTEL_ME_BUS_NUMBER,
+		INTEL_ME_DEVICE_NUMBER,
+		INTEL_ME_3_FUNC_NUMBER ,
+		{
+			INTEL_ME_BAR_LOWER_OFFSET,
+			INTEL_ME_BAR_UPPER_OFFSET,
+			0,0,0,0,
+		},
+		1,		//32bit for 2, 64bit for 1
+		{ 0 , 0 , 0 , 0 , 0 , 0 },
+		IntelMeHandleMmioAccessCallback,
+		{
+			PCI_BAR_64BIT ,
+			0 , 0 , 0 , 0 , 0 ,
+		},
+		IntelMeHandleBarCallback,
 	};
 
 	PCIMONITORCFG g_MonitorDeviceList[] =
 	{
 		SpiDeviceInfo,
+		IntelMeDeviceInfo,
+		IntelMe2DeviceInfo,
+		IntelMe3DeviceInfo,
 	};
 
 	//////////////////////////////////////////////
@@ -75,6 +151,9 @@ extern "C"
 		);
 
 		PhysAddr.QuadPart = ((ULONG64)PciBarPa & 0x00000000FFFFFFFF);
+
+		HYPERPLATFORM_LOG_DEBUG("[IntelMe] PCI= %d %d %d %d Pa= %x %p ", 
+			BusNumber, DeviceNumber, FunctionNumber, Offset, PciBarPa, PhysAddr.QuadPart);
 
 		return PhysAddr.QuadPart;
 	}
@@ -117,13 +196,27 @@ extern "C"
 	{
 		EptCommonEntry*  Entry = nullptr;
 		ULONG64       PciBarPa = 0;
-
+		
 		PciBarPa = DmGetDeviceBarAddress(
 			Cfg->BusNumber,
 			Cfg->DeviceNum,
 			Cfg->FuncNum,
 			Cfg->BarOffset[BarIndex]
 		);
+
+		if (Cfg->BarAddressWidth[BarIndex] & PCI_BAR_64BIT)
+		{
+			ULONG64 UpperPa = DmGetDeviceBarAddress(
+				Cfg->BusNumber,
+				Cfg->DeviceNum,
+				Cfg->FuncNum,
+				Cfg->BarOffset[BarIndex + 1]
+			);
+
+			HYPERPLATFORM_LOG_DEBUG("[IntelMe] Lower= %I64x_%I64x \r\n", UpperPa, PciBarPa);
+
+			PciBarPa = Cfg->Callback2(PciBarPa, UpperPa);
+		}
 
 		if (!PciBarPa || !ept_data)
 		{
@@ -168,13 +261,19 @@ extern "C"
 					HYPERPLATFORM_LOG_DEBUG("- [PCI] PCIBAR ept Entry Not Found \r\n");
 					continue;
 				}
-
+					
 				HYPERPLATFORM_LOG_DEBUG("+ [PCI] Entry= %p BAR= %p \r\n", 
 					Entry->all, g_MonitorDeviceList[i].BarAddress[j]);
 
 				Entry->fields.read_access		= false;
 				Entry->fields.write_access		= false;
 				Entry->fields.execute_access	= true;
+
+				if (g_MonitorDeviceList[i].BarAddressWidth[j] & PCI_BAR_64BIT)
+				{
+					//Lower - Upper by default.
+					j++;
+				}
 			}
 		}
 		return STATUS_SUCCESS;

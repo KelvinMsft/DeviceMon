@@ -8,6 +8,12 @@
 extern "C"
 { 
 
+typedef struct {
+	USHORT addr;    //relative offset to SPIBAR 
+	int    size;
+	char   *name;
+} IoRegister;
+
 void	 
 DmSetMonitorTrapFlag(
 	bool enable

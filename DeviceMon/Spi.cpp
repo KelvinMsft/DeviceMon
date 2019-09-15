@@ -4,7 +4,7 @@
 
 #include "Spi.h"
 #include "log.h"
-
+#include "DevMon.h"
 extern "C"
 {
 //////////////////////////////////////////////
@@ -34,12 +34,7 @@ typedef union _BIOS_HSFSTS_CTRL {
 		unsigned int FlashSpiSmiPinEnable : 1; //!<   [31]
 	} fields;
 }HSSFSTSCTL, *PHSSFSTSCTL;
-
-typedef struct {
-	USHORT addr;    //relative offset to SPIBAR 
-	int    size;
-	char   *name;
-} IoRegister;
+ 
 
 
 //////////////////////////////////////////////

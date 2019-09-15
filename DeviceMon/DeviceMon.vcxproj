@@ -70,6 +70,7 @@
     <ClCompile Include="hotplug_callback.cpp" />
     <ClCompile Include="kernel_stl.cpp" />
     <ClCompile Include="log.cpp" />
+    <ClCompile Include="Me.cpp" />
     <ClCompile Include="Spi.cpp" />
     <ClCompile Include="performance.cpp" />
     <ClCompile Include="power_callback.cpp" />
@@ -87,6 +88,7 @@
     <ClInclude Include="hotplug_callback.h" />
     <ClInclude Include="ia32_type.h" />
     <ClInclude Include="log.h" />
+    <ClInclude Include="Me.h" />
     <ClInclude Include="Spi.h" />
     <ClInclude Include="DevMon.h" />
     <ClInclude Include="performance.h" />
