@@ -191,7 +191,7 @@ extern "C"
 	DmGetBarEptEntry(
 		_In_ PCIMONITORCFG* Cfg,
 		_In_ ULONG	  BarIndex,
-                _In_ ULONG	  BarWidthIndex,
+        _In_ ULONG	  BarWidthIndex,
 		_In_ EptData*     ept_data
 	)
 	{
@@ -251,10 +251,10 @@ extern "C"
 	NTSTATUS DmEnableDeviceMonitor(
 		_In_ EptData* ept_data)
 	{
-                ULONG BarWidthIndex = 0;
 		EptCommonEntry*  Entry = nullptr;
 		for (int i = 0; i < sizeof(g_MonitorDeviceList) / sizeof(PCIMONITORCFG); i++)
 		{
+			ULONG BarWidthIndex = 0;
 			for (int j = 0; j < g_MonitorDeviceList[i].BarCount; j++, BarWidthIndex++)
 			{
 				Entry = DmGetBarEptEntry(&g_MonitorDeviceList[i], j, BarWidthIndex, ept_data);
