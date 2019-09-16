@@ -32,19 +32,27 @@ extern "C"
 		ULONG		   Access
 	);
 
+
+
 	typedef struct _PCI_MONITOR_CFG
 	{
-		UINT8	BusNumber;						//
-		UINT8	DeviceNum;						//
-		UINT8	FuncNum;						//
-		UINT8	BarOffset[MAX_BAR_INDEX];		// BAR offset in PCI Config , check your chipset datasheet
-		UINT8	BarCount;						// Number of BAR in PCI Config , check your chipset datasheet
-		ULONG64 BarAddress[MAX_BAR_INDEX];		// Retrieved address 
-		MMIOCALLBACK Callback;					// callback whenever access to this adress
-		ULONG   BarAddressWidth[MAX_BAR_INDEX];	// 64 -> callback2
-		OFFSETMAKECALLBACK Callback2;			// callback that indicate offset is 64bit 
-												// offset combination is compatible for those 64bit combined BAR,
-												// and it should take device-dependent bitwise operation. 
+		UINT8				BusNumber;						// Device Bus
+		UINT8				DeviceNum;						// Device Number
+		UINT8				FuncNum;						// Device Function
+
+		UINT8				BarOffset[MAX_BAR_INDEX];		// BAR offset in PCI Config , check your chipset datasheet
+															// By default is 6 32bit BAR, if your device is 64bit BAR maxium is 3
+															// for 64bit, please adding BarAddressWidth
+															// LOWER and UPPER offset have to be in order as IntelMeDeviceInfo
+
+		UINT8				BarCount;						// Number of BAR in PCI Config , check your chipset datasheet
+		ULONG64				BarAddress[MAX_BAR_INDEX];		// Obtained BAR address, it will be filled out runtime
+		MMIOCALLBACK		Callback;						// MMIO handler
+		ULONG				BarAddressWidth[MAX_BAR_INDEX]; // 0 by default, PCI_64BIT_DEVICE affect BarOffset parsing n, n+1 => 64bit
+
+		OFFSETMAKECALLBACK  Callback2;						// callback that indicate offset is 64bit BAR
+															// offset combination is compatible for those 64bit combined BAR,
+															// and it should take device-dependent bitwise operation. 
 	}PCIMONITORCFG, *PPCIMONITORCFG;
 
 	//////////////////////////////////////////////
