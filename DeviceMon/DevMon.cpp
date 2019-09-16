@@ -16,6 +16,8 @@ extern "C"
 	//	Types
 	//
 	#define PCI_BAR_64BIT 0x1
+
+	#define MAX_BAR_INDEX 0x6
 	
 	typedef ULONG64 (*OFFSETMAKECALLBACK)(
 		ULONG64 UpperBAR,
@@ -32,17 +34,17 @@ extern "C"
 
 	typedef struct _PCI_MONITOR_CFG
 	{
-		UINT8	BusNumber;				//
-		UINT8	DeviceNum;				//
-		UINT8	FuncNum;				//
-		UINT8	BarOffset[6];			// BAR offset in PCI Config , check your chipset datasheet
-		UINT8	BarCount;				// Number of BAR in PCI Config , check your chipset datasheet
-		ULONG64 BarAddress[6];			// Retrieved address 
-		MMIOCALLBACK Callback;			// callback whenever access to this adress
-		ULONG   BarAddressWidth[6];		// 64 -> callback2
-		OFFSETMAKECALLBACK Callback2;	// callback that indicate offset is 64bit 
-										// offset combination is compatible for those 64bit combined BAR,
-										// and it should take device-dependent bitwise operation. 
+		UINT8	BusNumber;						//
+		UINT8	DeviceNum;						//
+		UINT8	FuncNum;						//
+		UINT8	BarOffset[MAX_BAR_INDEX];		// BAR offset in PCI Config , check your chipset datasheet
+		UINT8	BarCount;						// Number of BAR in PCI Config , check your chipset datasheet
+		ULONG64 BarAddress[MAX_BAR_INDEX];		// Retrieved address 
+		MMIOCALLBACK Callback;					// callback whenever access to this adress
+		ULONG   BarAddressWidth[MAX_BAR_INDEX];	// 64 -> callback2
+		OFFSETMAKECALLBACK Callback2;			// callback that indicate offset is 64bit 
+												// offset combination is compatible for those 64bit combined BAR,
+												// and it should take device-dependent bitwise operation. 
 	}PCIMONITORCFG, *PPCIMONITORCFG;
 
 	//////////////////////////////////////////////
@@ -111,7 +113,7 @@ extern "C"
 			INTEL_ME_BAR_UPPER_OFFSET,
 			0,0,0,0,
 		},
-		1,		//32bit for 2, 64bit for 1
+		1,		 
 		{ 0 , 0 , 0 , 0 , 0 , 0 },
 		IntelMeHandleMmioAccessCallback,
 		{
@@ -190,22 +192,29 @@ extern "C"
 	EptCommonEntry*
 	DmGetBarEptEntry(
 		_In_ PCIMONITORCFG* Cfg,
-		_In_ ULONG	  BarIndex,
-        _In_ ULONG	  BarWidthIndex,
-		_In_ EptData*     ept_data
+		_In_ ULONG			BarIndex,
+        _In_ ULONG			BarWidthIndex,
+		_In_ EptData*		ept_data
 	)
 	{
 		EptCommonEntry*  Entry = nullptr;
+		ULONG64       LowerPa  = 0;
 		ULONG64       PciBarPa = 0;
-		
-		PciBarPa = DmGetDeviceBarAddress(
+
+		if (BarIndex >= MAX_BAR_INDEX)
+		{
+			return Entry;
+		}
+
+		LowerPa = DmGetDeviceBarAddress(
 			Cfg->BusNumber,
 			Cfg->DeviceNum,
 			Cfg->FuncNum,
 			Cfg->BarOffset[BarIndex]
 		);
 
-		if (Cfg->BarAddressWidth[BarWidthIndex] & PCI_BAR_64BIT)
+		PciBarPa = LowerPa;
+		if (Cfg->BarAddressWidth[BarWidthIndex] & PCI_BAR_64BIT && ((BarIndex + 1) < MAX_BAR_INDEX))
 		{
 			ULONG64 UpperPa = DmGetDeviceBarAddress(
 				Cfg->BusNumber,
@@ -214,12 +223,11 @@ extern "C"
 				Cfg->BarOffset[BarIndex + 1]
 			);
 
-			HYPERPLATFORM_LOG_DEBUG("[IntelMe] Lower= %I64x_%I64x \r\n", UpperPa, PciBarPa);
+			HYPERPLATFORM_LOG_DEBUG("[IntelMe] Lower= %I64x_%I64x \r\n", UpperPa, LowerPa);
 
-			PciBarPa = Cfg->Callback2(PciBarPa, UpperPa);
+			PciBarPa = Cfg->Callback2(LowerPa, UpperPa);
 		}
-
-		if (!PciBarPa || !ept_data)
+ 		if (!PciBarPa || !ept_data)
 		{
 			HYPERPLATFORM_LOG_DEBUG(" - [PCI] Empty PCIBAR, check your datasheet \r\n");
 			return Entry;
@@ -267,9 +275,9 @@ extern "C"
 				HYPERPLATFORM_LOG_DEBUG("+ [PCI] Entry= %p BAR= %p \r\n", 
 					Entry->all, g_MonitorDeviceList[i].BarAddress[j]);
 
-				Entry->fields.read_access	= false;
-				Entry->fields.write_access	= false;
-				Entry->fields.execute_access	= true;
+				Entry->fields.read_access	 = false;
+				Entry->fields.write_access	 = false;
+				Entry->fields.execute_access = true;
 
 				if (g_MonitorDeviceList[i].BarAddressWidth[BarWidthIndex] & PCI_BAR_64BIT)
 				{
@@ -284,7 +292,7 @@ extern "C"
 	NTSTATUS DmDisableDeviceMonitor(
 		_In_ EptData* ept_data)
 	{       
-                ULONG            BarWidthIndex = 0; 
+        ULONG            BarWidthIndex = 0; 
 		NTSTATUS		status = STATUS_SUCCESS;
 		EptCommonEntry*          Entry = nullptr;
 		
