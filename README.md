@@ -85,7 +85,7 @@ PCIMONITORCFG IntelMeDeviceInfo =
 {
   INTEL_ME_BUS_NUMBER,			
   INTEL_ME_DEVICE_NUMBER,		
-  INTEL_ME_FUNC_NUMBER ,		
+  INTEL_ME_1_FUNC_NUMBER,		
   {					
     INTEL_ME_BAR_LOWER_OFFSET,		
     INTEL_ME_BAR_UPPER_OFFSET,		
@@ -190,7 +190,7 @@ typedef bool(*MMIOCALLBACK)(
 		ULONG_PTR MmioAddress,
 		ULONG	  InstLen,
 		ULONG	  Access
-		);
+	);
  
  ``` 
 Because huge differences between PCI devices, you have to check device config from your data-sheet from your hardware manufacture.
@@ -217,7 +217,8 @@ Because huge differences between PCI devices, you have to check device config fr
   * SPI Controller Interface
   * Intel ME Controller Interface 
   * xHCI (USB3) Controller Interface
+  * etc... more device are coming soon...
   
- Moreover, Except for the malware behavior capturing, DeviceMon is also a good helper for analysis device driver protocol. :)
+Except for the malware behavior capturing, DeviceMon is also a good helper for analysis device driver protocol. :)
  
- Request for more device monitoring is welcome. please feel free to contact via kelvin.chan@microsoft.com
+Request for more device monitoring is welcome. please feel free to contact via kelvin.chan@microsoft.com
