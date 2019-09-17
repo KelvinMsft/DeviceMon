@@ -10,6 +10,7 @@
 #include "util.h"
 #include "Spi.h"
 #include "Me.h"
+#include "Usb.h"
 extern "C"
 {
 	//////////////////////////////////////////////
@@ -131,12 +132,30 @@ extern "C"
 		IntelMeHandleBarCallback,
 	};
 
+
+	PCIMONITORCFG IntelUsb3DeviceInfo = {
+		INTEL_USB3_BUS_NUMBER,
+		INTEL_USB3_DEVICE_NUMBER,
+		INTEL_USB3_FUNC_NUMBER ,
+		{
+			INTEL_USB3_BAR_LOWER_OFFSET,
+			0,0,0,0,0,
+		},
+		1,
+		{ 0 , 0 , 0 , 0 , 0 , 0 },
+		IntelUsb3HandleMmioAccessCallback,
+		{
+			0 ,	0 , 0 , 0 , 0 , 0 ,
+		},
+		nullptr,
+	};
 	PCIMONITORCFG g_MonitorDeviceList[] =
 	{
 		SpiDeviceInfo,
 		IntelMeDeviceInfo,
 		IntelMe2DeviceInfo,
 		IntelMe3DeviceInfo,
+		IntelUsb3DeviceInfo,
 	};
 
 	//////////////////////////////////////////////
@@ -160,7 +179,7 @@ extern "C"
 			sizeof(ULONG)
 		);
 
-		PhysAddr.QuadPart = ((ULONG64)PciBarPa & 0x00000000FFFFFFFF);
+		PhysAddr.QuadPart = ((ULONG64)PciBarPa & 0x00000000FFFFFFF0);
 
 		HYPERPLATFORM_LOG_DEBUG("[IntelMe] PCI= %d %d %d %d Pa= %x %p ", 
 			BusNumber, DeviceNumber, FunctionNumber, Offset, PciBarPa, PhysAddr.QuadPart);
@@ -231,13 +250,13 @@ extern "C"
 				Cfg->BarOffset[BarIndex + 1]
 			);
 
-			HYPERPLATFORM_LOG_DEBUG("[IntelMe] Lower= %I64x_%I64x \r\n", UpperPa, LowerPa);
+			HYPERPLATFORM_LOG_DEBUG_SAFE("[IntelMe] Lower= %I64x_%I64x \r\n", UpperPa, LowerPa);
 
 			PciBarPa = Cfg->Callback2(LowerPa, UpperPa);
 		}
  		if (!PciBarPa || !ept_data)
 		{
-			HYPERPLATFORM_LOG_DEBUG(" - [PCI] Empty PCIBAR, check your datasheet \r\n");
+			HYPERPLATFORM_LOG_DEBUG_SAFE(" - [PCI] Empty PCIBAR, check your datasheet \r\n");
 			return Entry;
 		}
 
@@ -247,20 +266,20 @@ extern "C"
 		//Cannot find in current EPT means it is device memory.
 		if (!Entry || !Entry->all)
 		{
-			HYPERPLATFORM_LOG_DEBUG(" - [PCI] PCIBAR0 never hasn't been memory-mapped, we map it now. \r\n");
+			HYPERPLATFORM_LOG_DEBUG_SAFE(" - [PCI] PCIBAR0 never hasn't been memory-mapped, we map it now. \r\n");
 			Entry = EptpMapGpaToHpa(PciBarPa, ept_data);
 			UtilInveptGlobal();
 		}
 
 		if (!Entry || !Entry->all)
 		{
-			HYPERPLATFORM_LOG_DEBUG(" - [PCI] Create mapping from PCIBAR mmio is failed, terminate now \r\n");
+			HYPERPLATFORM_LOG_DEBUG_SAFE(" - [PCI] Create mapping from PCIBAR mmio is failed, terminate now \r\n");
 			return Entry;
 		}
 
 		Cfg->BarAddress[BarIndex] = PciBarPa;
 
-		HYPERPLATFORM_LOG_DEBUG(" + [PCI] PCIBAR Ept Entry found 0x%I64x \r\n", Entry->all);
+		HYPERPLATFORM_LOG_DEBUG_SAFE(" + [PCI] PCIBAR Ept Entry found 0x%I64x \r\n", Entry->all);
 		return Entry;
 	}
 	

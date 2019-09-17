@@ -61,6 +61,9 @@
     <ClCompile Include="Me.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Usb.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="asm.h">
@@ -115,6 +118,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Me.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Usb.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
