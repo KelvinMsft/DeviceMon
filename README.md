@@ -161,9 +161,7 @@ PCIMONITORCFG IntelUsb3DeviceInfo =
   1,
   { 0 , 0 , 0 , 0 , 0 , 0 },
   IntelUsb3HandleMmioAccessCallback,
-  {
-    0 ,	0 , 0 , 0 , 0 , 0 ,
-  },
+  { 0 ,	0 , 0 , 0 , 0 , 0 },
   nullptr,
 };
 
