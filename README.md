@@ -215,7 +215,11 @@ Because huge differences between PCI devices, you have to check device config fr
  <img src="https://user-images.githubusercontent.com/22551808/65013340-a59efa00-d8cf-11e9-93a2-3a1050d2eb06.png" width="70%"
  height="70%" align="middle"> </img>
  
+ # Supported Devices
+  * SPI Controller Interface
+  * Intel ME Controller Interface 
+  * xHCI (USB3) Controller Interface
+  
  Moreover, Except for the malware behavior capturing, DeviceMon is also a good helper for analysis device driver protocol. :)
  
- Request for more device monitoring is welcome. please feel free to contact via kelvin.chan@microsoft.com / kelvin1272011@gmail.com
- or directly create an issue. 
+ Request for more device monitoring is welcome. please feel free to contact via kelvin.chan@microsoft.com
