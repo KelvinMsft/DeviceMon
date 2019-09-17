@@ -126,7 +126,6 @@ PCIMONITORCFG IntelMe2DeviceInfo =
 
 
 
-
 PCIMONITORCFG IntelMe3DeviceInfo = 
 {
   INTEL_ME_BUS_NUMBER,	
@@ -148,6 +147,26 @@ PCIMONITORCFG IntelMe3DeviceInfo =
 };
 
 
+
+
+PCIMONITORCFG IntelUsb3DeviceInfo = 
+{
+  INTEL_USB3_BUS_NUMBER,
+  INTEL_USB3_DEVICE_NUMBER,
+  INTEL_USB3_FUNC_NUMBER ,
+  {
+    INTEL_USB3_BAR_LOWER_OFFSET,
+    0,0,0,0,0,
+  },
+  1,
+  { 0 , 0 , 0 , 0 , 0 , 0 },
+  IntelUsb3HandleMmioAccessCallback,
+  {
+    0 ,	0 , 0 , 0 , 0 , 0 ,
+  },
+  nullptr,
+};
+
 	
 ```
 ```
@@ -159,6 +178,7 @@ PCIMONITORCFG g_MonitorDeviceList[] =
   IntelMeDeviceInfo,
   IntelMe2DeviceInfo,
   IntelMe3DeviceInfo,
+  IntelUsb3DeviceInfo,
 };
  
 ```
@@ -190,7 +210,7 @@ Because huge differences between PCI devices, you have to check device config fr
    
  <img src="https://user-images.githubusercontent.com/22551808/64921244-b3406c80-d775-11e9-92a9-1d43a5e68a15.png" width="70%" height="70%" align="middle"> </img>
  
- * xHCI interface monitoring
+ * xHCI(USB3) controller Interface Driver Monitoring
  
  <img src="https://user-images.githubusercontent.com/22551808/65013340-a59efa00-d8cf-11e9-93a2-3a1050d2eb06.png" width="70%"
  height="70%" align="middle"> </img>
