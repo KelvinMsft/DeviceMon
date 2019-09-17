@@ -189,7 +189,12 @@ Because huge differences between PCI devices, you have to check device config fr
    - https://downloadcenter.intel.com/download/26136/Intel-Management-Engine-Corporate-Driver-for-Windows-7-8-1-10-for-NUC5i5MY
    
  <img src="https://user-images.githubusercontent.com/22551808/64921244-b3406c80-d775-11e9-92a9-1d43a5e68a15.png" width="70%" height="70%" align="middle"> </img>
-
+ 
+ * xHCI interface monitoring
+ 
+ <img src="https://user-images.githubusercontent.com/22551808/65013340-a59efa00-d8cf-11e9-93a2-3a1050d2eb06.png" width="70%"
+ height="70%" align="middle"> </img>
+ 
  Moreover, Except for the malware behavior capturing, DeviceMon is also a good helper for analysis device driver protocol. :)
  
  Request for more device monitoring is welcome. please feel free to contact via kelvin.chan@microsoft.com / kelvin1272011@gmail.com
