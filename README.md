@@ -13,7 +13,7 @@ Please feel free to make your device protocol analyzer :D
   * Windowr Driver Kit 10 
   * Windows 10 x64 RS4
   * With VT-x enabled machine
-  * Series 100 / 200 / 300 Chipset's SPI Interface
+  * Series 100 / 200 / 300 Chipset
   
  # Installation
 
