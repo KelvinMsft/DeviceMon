@@ -221,6 +221,11 @@ Because huge differences between PCI devices, you have to check device config fr
   * xHCI (USB3) Controller Interface
   * etc... more device are coming soon...
   
+ # Possibility 
+  * PCIe fuzzer
+  * Device Protocol Analyzer 
+  * Defensive Device Protection
+ 
 Except for the malware behavior capturing, DeviceMon is also a good helper for analysis device driver protocol. :)
  
 Request for more device monitoring is welcome. please feel free to contact via kelvin.chan@microsoft.com
