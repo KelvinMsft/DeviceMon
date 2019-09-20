@@ -422,6 +422,11 @@ extern "C"
 					(g_MonitorDeviceList[i].BarLimit[BarIndex] < g_MonitorDeviceList[i].BarAddress[BarIndex]))
 				{
 					HYPERPLATFORM_LOG_DEBUG("- [PCI] PCIBAR Found Error \r\n");
+					if (g_MonitorDeviceList[i].BarAddressWidth[BarIndex] & PCI_BAR_64BIT)
+					{
+						//Lower - Upper by default.
+						BarOffsetIndex++;
+					}
 					continue;
 				}
 	
@@ -461,7 +466,12 @@ extern "C"
 					((g_MonitorDeviceList[i].BarAddress[BarIndex] & 0xFFFFF00000000000) == 0xFFFFF00000000000) ||
 					(g_MonitorDeviceList[i].BarLimit[BarIndex] < g_MonitorDeviceList[i].BarAddress[BarIndex]))
 				{
-					HYPERPLATFORM_LOG_DEBUG("- [PCI] PCIBAR Found Error \r\n");
+					HYPERPLATFORM_LOG_DEBUG("- [PCI] PCIBAR Found Error \r\n"); 
+					if (g_MonitorDeviceList[i].BarAddressWidth[BarIndex] & PCI_BAR_64BIT)
+					{
+						//Lower - Upper by default.
+						BarOffsetIndex++;
+					}
 					continue;
 				}
 
