@@ -76,6 +76,7 @@ PCIMONITORCFG SpiDeviceInfo =
   },	
   1,					
   { 0 , 0 , 0 , 0 , 0 , 0 },		
+  { 0 , 0 , 0 , 0 , 0 , 0 },		
   SpiHandleMmioAccessCallback,		
   { 0 , 0 , 0 , 0 , 0 , 0 },		
   nullptr,				
@@ -95,6 +96,7 @@ PCIMONITORCFG IntelMeDeviceInfo =
   },					
   1,					
   { 0 , 0 , 0 , 0 , 0 , 0 },
+  { 0 , 0 , 0 , 0 , 0 , 0 },		
   IntelMeHandleMmioAccessCallback,	
   {					
     PCI_BAR_64BIT ,			
@@ -118,6 +120,7 @@ PCIMONITORCFG IntelMe2DeviceInfo =
   },
   1,		
   { 0 , 0 , 0 , 0 , 0 , 0 },
+  { 0 , 0 , 0 , 0 , 0 , 0 },
   IntelMeHandleMmioAccessCallback,
   {
     PCI_BAR_64BIT ,
@@ -140,6 +143,7 @@ PCIMONITORCFG IntelMe3DeviceInfo =
   },
   1,		
   { 0 , 0 , 0 , 0 , 0 , 0 },
+  { 0 , 0 , 0 , 0 , 0 , 0 },	
   IntelMeHandleMmioAccessCallback,
   {
     PCI_BAR_64BIT ,
@@ -162,11 +166,35 @@ PCIMONITORCFG IntelUsb3DeviceInfo =
   },
   1,
   { 0 , 0 , 0 , 0 , 0 , 0 },
+  { 0 , 0 , 0 , 0 , 0 , 0 },		
   IntelUsb3HandleMmioAccessCallback,
   { 0 ,	0 , 0 , 0 , 0 , 0 },
   nullptr,
 };
 
+PCIMONITORCFG MarvellNicDeviceInfo = 
+{
+   MARVELL_NIC_BUS_NUMBER,	
+   MARVELL_NIC_DEVICE_NUMBER,
+   MARVELL_NIC_FUNC_NUMBER ,
+   {
+	MARVELL_NIC_BAR_LOWER_OFFSET,
+	MARVELL_NIC_BAR_HIGH_OFFSET,
+	MARVELL_NIC_BAR1_LOWER_OFFSET,
+	MARVELL_NIC_BAR1_HIGHT_OFFSET,
+	0,0,
+   },
+   2,
+   { 0 , 0 , 0 , 0 , 0 , 0 },
+   { 0 , 0 , 0 , 0 , 0 , 0 },
+   IntelNicHandleMmioAccessCallback,
+  {
+    PCI_BAR_64BIT ,	
+    PCI_BAR_64BIT ,
+    0 , 0 , 0 , 0 ,
+  },
+  IntelNicHandleBarCallback,
+};
 	
 ```
 ```
@@ -179,10 +207,19 @@ PCIMONITORCFG g_MonitorDeviceList[] =
   IntelMe2DeviceInfo,
   IntelMe3DeviceInfo,
   IntelUsb3DeviceInfo,
+  MarvellNicDeviceInfo
 };
  
 ```
-* Step 3: Implement your callback with your device logic 
+* Step 3: Implement your 64bit BAR maker, for some devices are required 64bit BAR, that may needs bitwise operation, user responsible for implement the BAR maker, during runtime, enginee will invoke the callback along with two BAR parameters, and used the returned value as monitored address.
+```
+typedef ULONG64 (*OFFSETMAKECALLBACK)(
+		ULONG64 UpperBAR,
+		ULONG64 LowerBAR
+	);
+```
+
+* Step 4: Implement your callback with your device logic 
 It will be eventually get invoke your callback on access (R/W) with the following prototype
  
 ```
@@ -219,6 +256,8 @@ Because huge differences between PCI devices, you have to check device config fr
   * SPI Controller Interface
   * Intel ME Controller Interface 
   * xHCI (USB3) Controller Interface
+  * Marvell Wireless Network Controller
+  * Device Driver Fuzzer
   * etc... more device are coming soon...
   
  # Possibility 
