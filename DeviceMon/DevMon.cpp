@@ -301,7 +301,7 @@ extern "C"
 	void InvalidateEptPages(EptData* ept_data, ULONG_PTR GuestPhysAddr, ULONG Size)
 	{
 		EptCommonEntry* Entry = nullptr;
-		ULONG PciBarSpacePa = GuestPhysAddr;
+		ULONG PciBarSpacePa = (ULONG)GuestPhysAddr;
 		for (int k = 0; k < ADDRESS_AND_SIZE_TO_SPAN_PAGES(0, Size); k++)
 		{
 			Entry = EptGetEptPtEntry(ept_data, PciBarSpacePa);
@@ -319,21 +319,21 @@ extern "C"
 			Entry->fields.write_access = false;
 			Entry->fields.execute_access = true;
 
-			PciBarSpacePa = GuestPhysAddr + PAGE_SIZE * k;
+			PciBarSpacePa = (ULONG)GuestPhysAddr + PAGE_SIZE * k;
 		}
 	}
 
 	void ValidateEptPages(EptData* ept_data, ULONG_PTR GuestPhysAddr, ULONG Size)
 	{
 		EptCommonEntry* Entry = nullptr;
-		ULONG PciBarSpacePa = GuestPhysAddr;
+		ULONG PciBarSpacePa = (ULONG)GuestPhysAddr;
 		for (int k = 0; k < ADDRESS_AND_SIZE_TO_SPAN_PAGES(0, Size); k++)
 		{
 			Entry = EptGetEptPtEntry(ept_data, PciBarSpacePa);
 			if (!Entry || !Entry->all)
 			{
 				HYPERPLATFORM_LOG_DEBUG_SAFE(" - [PCI] PCIBAR0 never hasn't been memory-mapped, we map it now. \r\n");
-				PciBarSpacePa = GuestPhysAddr + PAGE_SIZE * k;
+				PciBarSpacePa = (ULONG)GuestPhysAddr + PAGE_SIZE * k;
 				continue;
 			}
 			if (!Entry || !Entry->all)
@@ -345,7 +345,7 @@ extern "C"
 			Entry->fields.write_access	 = true;
 			Entry->fields.execute_access = true;
 
-			PciBarSpacePa = GuestPhysAddr + PAGE_SIZE * k;
+			PciBarSpacePa = (ULONG)GuestPhysAddr + PAGE_SIZE * k;
 		}
 	}
 
@@ -433,7 +433,7 @@ extern "C"
 				);
 
 				InvalidateEptPages(ept_data, g_MonitorDeviceList[i].BarAddress[BarIndex], 
-					g_MonitorDeviceList[i].BarLimit[BarIndex] - g_MonitorDeviceList[i].BarAddress[BarIndex]
+					(ULONG)(g_MonitorDeviceList[i].BarLimit[BarIndex] - g_MonitorDeviceList[i].BarAddress[BarIndex])
 				);
  
 				if (g_MonitorDeviceList[i].BarAddressWidth[BarIndex] & PCI_BAR_64BIT)
@@ -474,7 +474,7 @@ extern "C"
 				);
 
 				ValidateEptPages(ept_data, g_MonitorDeviceList[i].BarAddress[BarIndex], 
-					g_MonitorDeviceList[i].BarLimit[BarIndex] - g_MonitorDeviceList[i].BarAddress[BarIndex]
+					(ULONG)(g_MonitorDeviceList[i].BarLimit[BarIndex] - g_MonitorDeviceList[i].BarAddress[BarIndex])
 				);
 
 				if (g_MonitorDeviceList[i].BarAddressWidth[BarIndex] & PCI_BAR_64BIT)
