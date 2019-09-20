@@ -15,6 +15,13 @@ Please feel free to make your device protocol analyzer :D
   * With VT-x enabled machine
   * Series 100 / 200 / 300 Chipset
   
+ # Advantages 
+  * Flexible and easy for use.
+  * Automative get your device information, such as, BAR address, and size.
+  * Compatible for all kind of BAR (1-6 BAR, 32/64bit respectively.)
+  * Focus on your monitor / fuzzing logic, low level mess can be ignored
+  * Capstone is embedded inside, nice interface for fuzzing purpose.
+  
  # Installation
 
    *  Compiled DeviceMon.sys 
