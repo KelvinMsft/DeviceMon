@@ -8,12 +8,20 @@
 #include "Usb.h"
 #include "log.h"
 
+#include "include\capstone\capstone.h"
+#include "Fuzzer.h"
+
+#define	FUZZ_ENABLE		1
+
+FUZZ UsbFuzzer = { 0 };
+
 
 EXTERN_C
 {
 	///////////////////////////////////////////////
 	// Implementation
 	//
+
 	bool IntelUsb3HandleMmioAccessCallback(
 		GpRegisters*  Context,
 		ULONG_PTR InstPointer,
@@ -22,9 +30,18 @@ EXTERN_C
 		ULONG		   Access
 	)
 	{
-	HYPERPLATFORM_LOG_DEBUG_SAFE("[USB3] context= %p Address= %p is being %d access by %p Len= %d\r\n",
-			Context, MmioAddress, Access, InstPointer, InstLen);
+		if (Access == 0x1 &&
+			KeGetCurrentIrql() <= DISPATCH_LEVEL)
+		{
+#ifdef FUZZ_ENABLE
+			//Read from MMIO space, fuzz it.
+			//return StartFuzz(Context, InstPointer, MmioAddress, InstLen, &UsbFuzzer);	
+#endif 
+		}
 
-		return true;
+		HYPERPLATFORM_LOG_DEBUG_SAFE("[USB3] context= %p Address= %p is being %d access by %p Len= %d Sign= %x\r\n",
+			Context, MmioAddress, Access, InstPointer, InstLen, *(UCHAR*)InstPointer);
+
+		return false;
 	}
 }

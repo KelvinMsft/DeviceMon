@@ -575,9 +575,11 @@ EptpAllocateEptEntryFromPreAllocated(EptData *ept_data) {
   const auto count =
       InterlockedIncrement(&ept_data->preallocated_entries_count);
   if (count > kEptpNumberOfPreallocatedEntries) {
-    HYPERPLATFORM_COMMON_BUG_CHECK(
+   /* HYPERPLATFORM_COMMON_BUG_CHECK(
         DeviceMonBugCheck::kExhaustedPreallocatedEntries, count,
         reinterpret_cast<ULONG_PTR>(ept_data), 0);
+		*/
+	  return EptpAllocateEptEntryFromPool();
   }
   return ept_data->preallocated_entries[count - 1];
 }

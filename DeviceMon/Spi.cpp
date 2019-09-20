@@ -5,6 +5,9 @@
 #include "Spi.h"
 #include "log.h"
 #include "DevMon.h"
+#include "Fuzzer.h"
+
+FUZZ SpiFuzzer = { 0 };
 extern "C"
 {
 //////////////////////////////////////////////
@@ -126,15 +129,11 @@ bool SpiHandleMmioAccessCallback(
 	HYPERPLATFORM_LOG_DEBUG("[SPI %s] Offset= 0x%X Register= %s \r\n",
 		AccessStr[Access - 1], Offset, SpiGetNameByOffset(Offset));
 
-	if (*(UCHAR*)InstPointer == 0xF3)
+	if (Access == 0x1 )
 	{
-		HYPERPLATFORM_LOG_DEBUG("[SPI %s] Dst=%p  Src= %p Len= %d",
-			AccessStr[Access - 1],
-			Context->di,
-			Context->si,
-			Context->cx);
+		StartFuzz(Context, InstPointer, MmioAddress, InstLen, &SpiFuzzer);
 	}
 
-	return true;
+	return false;
 }
 }

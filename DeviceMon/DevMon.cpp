@@ -11,6 +11,7 @@
 #include "Spi.h"
 #include "Me.h"
 #include "Usb.h"
+#include "network.h"
 extern "C"
 {
 	//////////////////////////////////////////////
@@ -48,6 +49,8 @@ extern "C"
 
 		UINT8				BarCount;						// Number of BAR in PCI Config , check your chipset datasheet
 		ULONG64				BarAddress[MAX_BAR_INDEX];		// Obtained BAR address, it will be filled out runtime
+		ULONG64				BarLimit[MAX_BAR_INDEX];		// Obtained BAR size   , it will be filled out runtime
+
 		MMIOCALLBACK		Callback;						// MMIO handler
 		ULONG				BarAddressWidth[MAX_BAR_INDEX]; // 0 by default, PCI_64BIT_DEVICE affect BarOffset parsing n, n+1 => 64bit
 
@@ -70,6 +73,7 @@ extern "C"
 			},
 			1,
 			{ 0 , 0 , 0 , 0 , 0 , 0 },
+			{ 0 , 0 , 0 , 0 , 0 , 0 },
 			SpiHandleMmioAccessCallback,
 			{0,0,0,0,0,0},
 			nullptr,
@@ -85,6 +89,7 @@ extern "C"
 			0,0,0,0,
 		},
 		1,
+		{ 0 , 0 , 0 , 0 , 0 , 0 },
 		{ 0 , 0 , 0 , 0 , 0 , 0 },
 		IntelMeHandleMmioAccessCallback,
 		{
@@ -105,6 +110,7 @@ extern "C"
 		},
 		1,
 		{ 0 , 0 , 0 , 0 , 0 , 0 },
+		{ 0 , 0 , 0 , 0 , 0 , 0 },
 		IntelMeHandleMmioAccessCallback,
 		{
 			PCI_BAR_64BIT ,
@@ -123,6 +129,7 @@ extern "C"
 			0,0,0,0,
 		},
 		1,		 
+		{ 0 , 0 , 0 , 0 , 0 , 0 },
 		{ 0 , 0 , 0 , 0 , 0 , 0 },
 		IntelMeHandleMmioAccessCallback,
 		{
@@ -143,12 +150,37 @@ extern "C"
 		},
 		1,
 		{ 0 , 0 , 0 , 0 , 0 , 0 },
+		{ 0 , 0 , 0 , 0 , 0 , 0 },
 		IntelUsb3HandleMmioAccessCallback,
 		{
 			0 ,	0 , 0 , 0 , 0 , 0 ,
 		},
 		nullptr,
 	};
+
+	PCIMONITORCFG MarvellNicDeviceInfo = {
+		MARVELL_NIC_BUS_NUMBER,
+		MARVELL_NIC_DEVICE_NUMBER,
+		MARVELL_NIC_FUNC_NUMBER ,
+		{
+			MARVELL_NIC_BAR_LOWER_OFFSET,
+			MARVELL_NIC_BAR_HIGH_OFFSET,
+			MARVELL_NIC_BAR1_LOWER_OFFSET,
+			MARVELL_NIC_BAR1_HIGHT_OFFSET,
+			0,0,
+		},
+		2,
+		{ 0 , 0 , 0 , 0 , 0 , 0 },
+		{ 0 , 0 , 0 , 0 , 0 , 0 },
+		IntelNicHandleMmioAccessCallback,
+		{
+			PCI_BAR_64BIT ,	PCI_BAR_64BIT ,
+			0 , 0 , 0 , 0 ,
+		},
+		IntelNicHandleBarCallback,
+	};
+
+
 	PCIMONITORCFG g_MonitorDeviceList[] =
 	{
 		SpiDeviceInfo,
@@ -156,11 +188,61 @@ extern "C"
 		IntelMe2DeviceInfo,
 		IntelMe3DeviceInfo,
 		IntelUsb3DeviceInfo,
+		MarvellNicDeviceInfo,
 	};
 
 	//////////////////////////////////////////////
 	//	Implementation
 	//
+	ULONG DmGetDeviceBarSize(
+		_In_ UINT8 BusNumber,
+		_In_ UINT8 DeviceNumber,
+		_In_ UINT8 FunctionNumber,
+		_In_ UINT8 Offset
+	)
+	{
+		ULONG BaseAddr = 0;
+		ULONG Size = 0;
+		BaseAddr = ReadPCICfg(
+			BusNumber,
+			DeviceNumber,		
+			FunctionNumber,     
+			Offset,				
+			sizeof(ULONG)
+		); 
+		
+		WritePCICfg(
+			BusNumber,
+			DeviceNumber,		
+			FunctionNumber,     
+			Offset,				
+			sizeof(ULONG),
+			0xFFFFFFFF
+		);
+
+		Size = ReadPCICfg(
+			BusNumber,
+			DeviceNumber,		
+			FunctionNumber,     
+			Offset,				
+			sizeof(ULONG)
+		);
+
+		WritePCICfg(
+			BusNumber,
+			DeviceNumber,		
+			FunctionNumber,     
+			Offset,				
+			sizeof(ULONG),
+			BaseAddr
+		);
+
+		Size &= 0xFFFFFFF0;
+		Size = ((~Size) + 1);
+
+		return Size;
+	}
+
 
 	ULONG64 DmGetDeviceBarAddress(
 		_In_ UINT8 BusNumber, 
@@ -216,100 +298,148 @@ extern "C"
 			nullptr);
 	}
 
-	EptCommonEntry*
-	DmGetBarEptEntry(
-		_In_ PCIMONITORCFG* Cfg,
-		_In_ ULONG			BarIndex,
-        _In_ ULONG			BarWidthIndex,
-		_In_ EptData*		ept_data
-	)
+	void InvalidateEptPages(EptData* ept_data, ULONG_PTR GuestPhysAddr, ULONG Size)
 	{
-		EptCommonEntry*  Entry = nullptr;
+		EptCommonEntry* Entry = nullptr;
+		ULONG PciBarSpacePa = GuestPhysAddr;
+		for (int k = 0; k < ADDRESS_AND_SIZE_TO_SPAN_PAGES(0, Size); k++)
+		{
+			Entry = EptGetEptPtEntry(ept_data, PciBarSpacePa);
+			if (!Entry || !Entry->all)
+			{
+				HYPERPLATFORM_LOG_DEBUG_SAFE(" - [PCI] PCIBAR0 never hasn't been memory-mapped, we map it now. \r\n");
+				Entry = EptpMapGpaToHpa(PciBarSpacePa, ept_data);
+				UtilInveptGlobal();
+			}
+			if (!Entry || !Entry->all)
+			{
+				break;
+			}
+			Entry->fields.read_access = false;
+			Entry->fields.write_access = false;
+			Entry->fields.execute_access = true;
+
+			PciBarSpacePa = GuestPhysAddr + PAGE_SIZE * k;
+		}
+	}
+
+	void ValidateEptPages(EptData* ept_data, ULONG_PTR GuestPhysAddr, ULONG Size)
+	{
+		EptCommonEntry* Entry = nullptr;
+		ULONG PciBarSpacePa = GuestPhysAddr;
+		for (int k = 0; k < ADDRESS_AND_SIZE_TO_SPAN_PAGES(0, Size); k++)
+		{
+			Entry = EptGetEptPtEntry(ept_data, PciBarSpacePa);
+			if (!Entry || !Entry->all)
+			{
+				HYPERPLATFORM_LOG_DEBUG_SAFE(" - [PCI] PCIBAR0 never hasn't been memory-mapped, we map it now. \r\n");
+				PciBarSpacePa = GuestPhysAddr + PAGE_SIZE * k;
+				continue;
+			}
+			if (!Entry || !Entry->all)
+			{
+				break;
+			}
+
+			Entry->fields.read_access	 = true;
+			Entry->fields.write_access	 = true;
+			Entry->fields.execute_access = true;
+
+			PciBarSpacePa = GuestPhysAddr + PAGE_SIZE * k;
+		}
+	}
+
+	void
+	DmInitBarInfo(
+		_In_ PCIMONITORCFG* Cfg,
+		_In_ ULONG			BarOffsetIndex,
+		_In_ ULONG			BarIndex)
+	{
 		ULONG64       LowerPa  = 0;
 		ULONG64       PciBarPa = 0;
-
-		if (BarIndex >= MAX_BAR_INDEX)
+		ULONG			  size = 0;
+		if (BarOffsetIndex >= MAX_BAR_INDEX)
 		{
-			return Entry;
+			return ;
+		}
+
+		size = DmGetDeviceBarSize(
+			Cfg->BusNumber,
+			Cfg->DeviceNum,
+			Cfg->FuncNum,
+			Cfg->BarOffset[BarOffsetIndex]
+		);
+
+		if (!size)
+		{
+			return ;
 		}
 
 		LowerPa = DmGetDeviceBarAddress(
 			Cfg->BusNumber,
 			Cfg->DeviceNum,
 			Cfg->FuncNum,
-			Cfg->BarOffset[BarIndex]
+			Cfg->BarOffset[BarOffsetIndex]
 		);
 
 		PciBarPa = LowerPa;
-		if (Cfg->BarAddressWidth[BarWidthIndex] & PCI_BAR_64BIT && ((BarIndex + 1) < MAX_BAR_INDEX))
+		if (Cfg->BarAddressWidth[BarIndex] & PCI_BAR_64BIT && ((BarOffsetIndex + 1) < MAX_BAR_INDEX))
 		{
 			ULONG64 UpperPa = DmGetDeviceBarAddress(
 				Cfg->BusNumber,
 				Cfg->DeviceNum,
 				Cfg->FuncNum,
-				Cfg->BarOffset[BarIndex + 1]
+				Cfg->BarOffset[BarOffsetIndex + 1]
 			);
 
 			HYPERPLATFORM_LOG_DEBUG_SAFE("[IntelMe] Lower= %I64x_%I64x \r\n", UpperPa, LowerPa);
 
 			PciBarPa = Cfg->Callback2(LowerPa, UpperPa);
 		}
- 		if (!PciBarPa || !ept_data)
+ 		if (!PciBarPa)
 		{
 			HYPERPLATFORM_LOG_DEBUG_SAFE(" - [PCI] Empty PCIBAR, check your datasheet \r\n");
-			return Entry;
-		}
-
-		//TODO: Get BAR size by filling 0xFFFFFFFF, and monitor all pages.
-		Entry = EptGetEptPtEntry(ept_data, PciBarPa);
-
-		//Cannot find in current EPT means it is device memory.
-		if (!Entry || !Entry->all)
-		{
-			HYPERPLATFORM_LOG_DEBUG_SAFE(" - [PCI] PCIBAR0 never hasn't been memory-mapped, we map it now. \r\n");
-			Entry = EptpMapGpaToHpa(PciBarPa, ept_data);
-			UtilInveptGlobal();
-		}
-
-		if (!Entry || !Entry->all)
-		{
-			HYPERPLATFORM_LOG_DEBUG_SAFE(" - [PCI] Create mapping from PCIBAR mmio is failed, terminate now \r\n");
-			return Entry;
+			return ;
 		}
 
 		Cfg->BarAddress[BarIndex] = PciBarPa;
-
-		HYPERPLATFORM_LOG_DEBUG_SAFE(" + [PCI] PCIBAR Ept Entry found 0x%I64x \r\n", Entry->all);
-		return Entry;
+		Cfg->BarLimit[BarIndex]   = PciBarPa + size;
+		return ;
 	}
 	
 	NTSTATUS DmEnableDeviceMonitor(
 		_In_ EptData* ept_data)
 	{
-		EptCommonEntry*  Entry = nullptr;
 		for (int i = 0; i < sizeof(g_MonitorDeviceList) / sizeof(PCIMONITORCFG); i++)
 		{
-			ULONG BarWidthIndex = 0;
-			for (int j = 0; j < g_MonitorDeviceList[i].BarCount; j++, BarWidthIndex++)
-			{
-				Entry = DmGetBarEptEntry(&g_MonitorDeviceList[i], j, BarWidthIndex, ept_data);
-				if (!Entry)
+			ULONG BarIndex = 0;
+			for (int BarOffsetIndex = 0; BarIndex <  g_MonitorDeviceList[i].BarCount; BarOffsetIndex++, BarIndex++)
+			{ 
+				DmInitBarInfo(&g_MonitorDeviceList[i], BarOffsetIndex, BarIndex);
+				
+				if (!g_MonitorDeviceList[i].BarAddress[BarIndex] || !g_MonitorDeviceList[i].BarLimit[BarIndex] ||
+					((g_MonitorDeviceList[i].BarAddress[BarIndex] & 0xFFFFF00000000000) == 0xFFFFF00000000000) ||
+					(g_MonitorDeviceList[i].BarLimit[BarIndex] < g_MonitorDeviceList[i].BarAddress[BarIndex]))
 				{
-					HYPERPLATFORM_LOG_DEBUG("- [PCI] PCIBAR ept Entry Not Found \r\n");
+					HYPERPLATFORM_LOG_DEBUG("- [PCI] PCIBAR Found Error \r\n");
 					continue;
 				}
-					
-				HYPERPLATFORM_LOG_DEBUG("+ [PCI] Entry= %p BAR= %p \r\n", 
-					Entry->all, g_MonitorDeviceList[i].BarAddress[j]);
+	
+				HYPERPLATFORM_LOG_DEBUG("[PCI] Start= %p Limit= %p MMIO Size= %x Spanned Page= %d \r\n", 
+					g_MonitorDeviceList[i].BarAddress[BarIndex],
+					g_MonitorDeviceList[i].BarLimit[BarIndex], 
+					g_MonitorDeviceList[i].BarLimit[BarIndex] - g_MonitorDeviceList[i].BarAddress[BarIndex] ,
+					ADDRESS_AND_SIZE_TO_SPAN_PAGES(0, g_MonitorDeviceList[i].BarLimit[BarIndex] - g_MonitorDeviceList[i].BarAddress[BarIndex])
+				);
 
-				Entry->fields.read_access	 = false;
-				Entry->fields.write_access	 = false;
-				Entry->fields.execute_access = true;
-
-				if (g_MonitorDeviceList[i].BarAddressWidth[BarWidthIndex] & PCI_BAR_64BIT)
+				InvalidateEptPages(ept_data, g_MonitorDeviceList[i].BarAddress[BarIndex], 
+					g_MonitorDeviceList[i].BarLimit[BarIndex] - g_MonitorDeviceList[i].BarAddress[BarIndex]
+				);
+ 
+				if (g_MonitorDeviceList[i].BarAddressWidth[BarIndex] & PCI_BAR_64BIT)
 				{
 					//Lower - Upper by default.
-					j++;
+					BarOffsetIndex++;
 				}
 			}
 		}
@@ -319,32 +449,38 @@ extern "C"
 	NTSTATUS DmDisableDeviceMonitor(
 		_In_ EptData* ept_data)
 	{       
-        ULONG            BarWidthIndex = 0; 
 		NTSTATUS		status = STATUS_SUCCESS;
-		EptCommonEntry*          Entry = nullptr;
-		
-                for (int i = 0; i < sizeof(g_MonitorDeviceList) / sizeof(PCIMONITORCFG); i++)
+		for (int i = 0; i < sizeof(g_MonitorDeviceList) / sizeof(PCIMONITORCFG); i++)
 		{
-			for (int j = 0; j < g_MonitorDeviceList[i].BarCount; j++, BarWidthIndex++ )
-			{
-				Entry = DmGetBarEptEntry(&g_MonitorDeviceList[i], j, BarWidthIndex, ept_data);
-				if (!Entry)
+			ULONG BarIndex = 0;
+			for (int BarOffsetIndex = 0; BarIndex < g_MonitorDeviceList[i].BarCount; BarOffsetIndex++, BarIndex++)
+			{	
+				DmInitBarInfo(&g_MonitorDeviceList[i], BarOffsetIndex, BarIndex);
+				
+				if (!g_MonitorDeviceList[i].BarAddress[BarIndex] || !g_MonitorDeviceList[i].BarLimit[BarIndex] ||
+					((g_MonitorDeviceList[i].BarAddress[BarIndex] & 0xFFFFF00000000000) == 0xFFFFF00000000000) ||
+					(g_MonitorDeviceList[i].BarLimit[BarIndex] < g_MonitorDeviceList[i].BarAddress[BarIndex]))
 				{
-					HYPERPLATFORM_LOG_DEBUG("- [PCI] PCIBAR ept Entry Not Found \r\n");
+					HYPERPLATFORM_LOG_DEBUG("- [PCI] PCIBAR Found Error \r\n");
 					continue;
 				}
 
-				HYPERPLATFORM_LOG_DEBUG("+ [PCI] Entry= %p BAR= %p \r\n",
-					Entry->all, g_MonitorDeviceList[i].BarAddress[j]);
 
-				Entry->fields.read_access = true;
-				Entry->fields.write_access = true;
-				Entry->fields.execute_access = true;
+				HYPERPLATFORM_LOG_DEBUG("[PCI] Start= %p Limit= %p MMIO Size= %x Spanned Page= %d \r\n",
+					g_MonitorDeviceList[i].BarAddress[BarIndex],
+					g_MonitorDeviceList[i].BarLimit[BarIndex],
+					g_MonitorDeviceList[i].BarLimit[BarIndex] - g_MonitorDeviceList[i].BarAddress[BarIndex],
+					ADDRESS_AND_SIZE_TO_SPAN_PAGES(0, g_MonitorDeviceList[i].BarLimit[BarIndex] - g_MonitorDeviceList[i].BarAddress[BarIndex])
+				);
 
-				if (g_MonitorDeviceList[i].BarAddressWidth[BarWidthIndex] & PCI_BAR_64BIT)
+				ValidateEptPages(ept_data, g_MonitorDeviceList[i].BarAddress[BarIndex], 
+					g_MonitorDeviceList[i].BarLimit[BarIndex] - g_MonitorDeviceList[i].BarAddress[BarIndex]
+				);
+
+				if (g_MonitorDeviceList[i].BarAddressWidth[BarIndex] & PCI_BAR_64BIT)
 				{
 					//Lower - Upper by default.
-					j++;
+					BarOffsetIndex++;
 				}
  
 			}
@@ -363,7 +499,8 @@ extern "C"
 		{
 			for (j = 0; j < g_MonitorDeviceList[i].BarCount; j++)
 			{
-				if (PAGE_ALIGN(MmioAddress) == (void*)g_MonitorDeviceList[i].BarAddress[j])
+				if (MmioAddress >= (ULONG)g_MonitorDeviceList[i].BarAddress[j] && 
+					MmioAddress <= (ULONG)g_MonitorDeviceList[i].BarLimit[j])
 				{
 					ret = true;
 					break;
@@ -388,11 +525,12 @@ extern "C"
 		{
 			for (j = 0; j < g_MonitorDeviceList[i].BarCount; j++)
 			{
-				if (PAGE_ALIGN(MmioAddress) == (void*)g_MonitorDeviceList[i].BarAddress[j])
+				if (MmioAddress >= (ULONG)g_MonitorDeviceList[i].BarAddress[j] &&
+					MmioAddress <= (ULONG)g_MonitorDeviceList[i].BarLimit[j])
 				{
 					if (g_MonitorDeviceList[i].Callback)
 					{
-						g_MonitorDeviceList[i].Callback(Context, InstPointer, MmioAddress, InstLen, Access);
+						ret = g_MonitorDeviceList[i].Callback(Context, InstPointer, MmioAddress, InstLen, Access);
 					}
 					break;
 				}

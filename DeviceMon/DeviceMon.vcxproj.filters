@@ -64,6 +64,12 @@
     <ClCompile Include="Usb.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Fuzzer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="network.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="asm.h">
@@ -121,6 +127,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Usb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Fuzzer.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="network.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

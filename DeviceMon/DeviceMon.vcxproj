@@ -50,6 +50,9 @@
     <Inf2CatUseLocalTime>true</Inf2CatUseLocalTime>
     <CodeAnalysisRuleSet>HyperPlatform.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>$(ProjectDir);$(IncludePath);C:\github\capstone\include\windowsce;</IncludePath>
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <WppRecorderEnabled>true</WppRecorderEnabled>
@@ -58,7 +61,12 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <DisableSpecificWarnings>5040;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ProgramDatabase</DebugInformationFormat>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">TurnOffAllWarnings</WarningLevel>
     </ClCompile>
+    <Link>
+      <AdditionalDependencies Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(AdditionalDependencies);$(KernelBufferOverflowLib);$(DDK_LIB_PATH)ntoskrnl.lib;$(DDK_LIB_PATH)hal.lib;$(DDK_LIB_PATH)wmilib.lib;capstone_static_winkernel.lib;ntstrsafe.lib;</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <FilesToPackage Include="$(TargetPath)" />
@@ -66,11 +74,13 @@
   <ItemGroup>
     <ClCompile Include="driver.cpp" />
     <ClCompile Include="ept.cpp" />
+    <ClCompile Include="Fuzzer.cpp" />
     <ClCompile Include="global_object.cpp" />
     <ClCompile Include="hotplug_callback.cpp" />
     <ClCompile Include="kernel_stl.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="Me.cpp" />
+    <ClCompile Include="network.cpp" />
     <ClCompile Include="Spi.cpp" />
     <ClCompile Include="performance.cpp" />
     <ClCompile Include="power_callback.cpp" />
@@ -85,11 +95,13 @@
     <ClInclude Include="common.h" />
     <ClInclude Include="driver.h" />
     <ClInclude Include="ept.h" />
+    <ClInclude Include="Fuzzer.h" />
     <ClInclude Include="global_object.h" />
     <ClInclude Include="hotplug_callback.h" />
     <ClInclude Include="ia32_type.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="Me.h" />
+    <ClInclude Include="network.h" />
     <ClInclude Include="Spi.h" />
     <ClInclude Include="DevMon.h" />
     <ClInclude Include="performance.h" />

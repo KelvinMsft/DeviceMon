@@ -47,5 +47,5 @@ bool IntelMeHandleMmioAccessCallback(
 	HYPERPLATFORM_LOG_DEBUG("[IntelMe] context= %p Address= %p is being %d access by %p Len= %d\r\n",
 		Context, MmioAddress, Access, InstPointer,InstLen);
 
-	return true;
+	return false;
 }

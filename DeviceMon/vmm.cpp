@@ -1281,7 +1281,8 @@ bool VmmpHandleMmio(GuestContext* guest_context)
 
 	const auto fault_rip	 = UtilVmRead(VmcsField::kGuestRip);
 	const auto fault_address = UtilVmRead(VmcsField::kGuestPhysicalAddress);
-	ULONG Access = 0;
+	ULONG	   Access		 = 0;
+	bool	   SkipInst		 = 0;
 
 	if (!DmIsMonitoredDevice((ULONG)fault_address))
 	{
@@ -1294,12 +1295,6 @@ bool VmmpHandleMmio(GuestContext* guest_context)
 		return false;
 	}
 
-	fault_entry->fields.execute_access = true;
-	fault_entry->fields.read_access    = true;
-	fault_entry->fields.write_access   = true;
-	
-	UtilInveptGlobal();
-
 	if (exit_qualification.fields.read_access)
 	{
 		Access = 0x1;
@@ -1308,15 +1303,28 @@ bool VmmpHandleMmio(GuestContext* guest_context)
 	{
 		Access = 0x2;
 	}
- 	
-	DmExecuteCallback(guest_context->gp_regs, fault_rip, fault_address,
-		(ULONG)UtilVmRead(VmcsField::kVmExitInstructionLen),
-		Access
-	);
-	 
-	guest_context->stack->processor_data->LastFaultEntry = fault_entry;
 
-	DmSetMonitorTrapFlag(true);
+	SkipInst = DmExecuteCallback(guest_context->gp_regs, fault_rip, fault_address,
+				(ULONG)UtilVmRead(VmcsField::kVmExitInstructionLen),
+				Access
+			  );
+
+	if (!SkipInst)
+	{
+		fault_entry->fields.execute_access	= true;
+		fault_entry->fields.read_access		= true;
+		fault_entry->fields.write_access	= true;
+
+		UtilInveptGlobal();
+
+		guest_context->stack->processor_data->LastFaultEntry = fault_entry;
+		DmSetMonitorTrapFlag(true);
+	}
+	else
+	{
+		//If we're fuzzing the MMIO , just skip and let see what happenes.
+		VmmpAdjustGuestInstructionPointer(guest_context);
+	}
 
 	return true;
 }
