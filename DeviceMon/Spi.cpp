@@ -119,6 +119,7 @@ bool SpiHandleMmioAccessCallback(
 	ULONG		   Access
 )
 {
+	Context;
 	ULONG Offset = 0;
 
 	Offset = MmioAddress & 0xFFF;
