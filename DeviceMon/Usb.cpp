@@ -35,7 +35,7 @@ EXTERN_C
 		{
 #ifdef FUZZ_ENABLE
 			//Read from MMIO space, fuzz it.
-			//return StartFuzz(Context, InstPointer, MmioAddress, InstLen, &UsbFuzzer);	
+			return StartFuzz(Context, InstPointer, MmioAddress, InstLen, &UsbFuzzer);	
 #endif 
 		}
 

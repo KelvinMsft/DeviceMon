@@ -14,6 +14,16 @@
 #define DUMMP_FUZZER32	(ULONG)(__rdtsc() ^ 0x5A5A5A5A5A5A5A5A)
 #define DUMMP_FUZZER64	__rdtsc() ^ 0x5A5A5A5A5A5A5A5A
 
+#define FUZZ_RECORD_LEN 0xFFFF
+typedef struct _ACCESS_RECORD
+{
+	ULONG     DesRegId;
+	ULONG_PTR Rip;
+}ACCESSRECORD;
+
+
+ACCESSRECORD Record[FUZZ_RECORD_LEN] = { 0 };
+
 
 ULONG AccessWidth(
 	ULONG RegId
@@ -222,15 +232,13 @@ void* SelectRegister(
 	return reg;
 }
 
-bool StartFuzz(
-	GpRegisters*  Context,
-	ULONG_PTR InstPointer,
-	ULONG_PTR MmioAddress,
-	ULONG		  InstLen,
-	FUZZ*		  fuzzer
+ULONG GetInstructionDestRegister(
+	GpRegisters*	Context,
+	ULONG_PTR		InstPointer,
+	ULONG			InstLen
 )
 {
-	bool ret = false;
+	ULONG DestRegId = 0;
 	cs_insn* instructions = nullptr;
 	cs_regs regs_read, regs_write;
 	uint8_t read_count, write_count, i;
@@ -239,7 +247,7 @@ bool StartFuzz(
 	KFLOATING_SAVE float_save = {};
 	auto status = KeSaveFloatingPointState(&float_save);
 	if (!NT_SUCCESS(status)) {
-		return false ;
+		return DestRegId;
 	}
 
 	// Disassemble at most 15 bytes to get an instruction size
@@ -247,7 +255,7 @@ bool StartFuzz(
 	const auto mode = CS_MODE_64;
 	if (cs_open(CS_ARCH_X86, mode, &handle) != CS_ERR_OK) {
 		KeRestoreFloatingPointState(&float_save);
-		return false;
+		return DestRegId;
 	}
 
 	cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON);
@@ -259,8 +267,10 @@ bool StartFuzz(
 	if (count == 0) {
 		cs_close(&handle);
 		KeRestoreFloatingPointState(&float_save);
-		return false;
+		return DestRegId;
 	}
+
+	HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Extracting Instruction= %p  %s \r\n", InstPointer, instructions[0].op_str);
 
 	if (cs_regs_access(handle, &instructions[0],
 		regs_read, &read_count,
@@ -269,18 +279,18 @@ bool StartFuzz(
 		cs_free(instructions, count);
 		cs_close(&handle);
 		KeRestoreFloatingPointState(&float_save);
-		return false;
+		return DestRegId;
 	}
-	
+
 	if (!write_count)
 	{
 		cs_free(instructions, count);
 		cs_close(&handle);
 		KeRestoreFloatingPointState(&float_save);
-		return false;
+		return DestRegId;
 	}
 
-	for (i = 0; i < write_count; i++) 
+	for (i = 0; i < write_count; i++)
 	{
 		ULONG width = 0;
 		char* reg = (char*)SelectRegister(Context, regs_write[i], &width);
@@ -288,44 +298,134 @@ bool StartFuzz(
 		{
 			continue;
 		}
-		
-		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Extracting Instruction: %s \r\n", instructions[0].op_str);
-		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] %s", cs_reg_name(handle, regs_write[i]));
-	
-		switch (width)
-		{
-		case 1:
-			//Don't fuzz on 8bit access. '/
-			HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Before: %s reg= %x", cs_reg_name(handle, regs_write[i]), *(UCHAR*)reg);
-			*(UCHAR*)reg |= DUMMP_FUZZER8;
-			HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] After: %s reg= %x", cs_reg_name(handle, regs_write[i]), *(UCHAR*)reg);
-			ret = true;
-			break;
-		case 2:
-			HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Before: %s reg= %x", cs_reg_name(handle, regs_write[i]), *(USHORT*)reg);
-			*(USHORT*)reg |= DUMMP_FUZZER16;
-			HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] After: %s reg= %x", cs_reg_name(handle, regs_write[i]), *(USHORT*)reg);
-			ret = true;
-			break;
-		case 4:
-			HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Before: %s reg= %x", cs_reg_name(handle, regs_write[i]), *(ULONG*)reg);
-			*(ULONG*)reg |= DUMMP_FUZZER32;
-			HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] After: %s reg= %x", cs_reg_name(handle, regs_write[i]), *(ULONG*)reg);
-			ret = true;
-			break;
-		case 8:
-			HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Before: %s reg= %p", cs_reg_name(handle, regs_write[i]), *(ULONG_PTR*)reg);
-			*(ULONG64*)reg |= DUMMP_FUZZER64;
-			HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] After: %s reg= %p", cs_reg_name(handle, regs_write[i]), *(ULONG_PTR*)reg);
-			ret = true;
-			break;
-		default:
-			break;
-		}
+		DestRegId = regs_write[i];
+		break;
 	}
+
 	cs_free(instructions, count);
 	cs_close(&handle);
 	KeRestoreFloatingPointState(&float_save);
+
+	return DestRegId;
+}
+ULONG GetRegIndexByRip(
+	GpRegisters*  Context,
+	ULONG_PTR InstPointer,
+	ULONG		  InstLen
+)
+{
+	ULONG Index = UtilPfnFromVa((void*)InstPointer) % FUZZ_RECORD_LEN;
+	ULONG count = 0;
+
+	//If RIP firstly present 
+	if (!Record[Index].Rip)
+	{
+		Record[Index].Rip		= InstPointer;
+		Record[Index].DesRegId  = GetInstructionDestRegister(
+			Context,
+			InstPointer,
+			InstLen
+		);
+		return Record[Index].DesRegId;
+	}
+	//If already exist
+	else if (Record[Index].Rip == InstPointer)
+	{
+		return Record[Index].DesRegId;
+	}
+
+	//If hash collision happened fallback
+	//Find if already moved once
+	count = 0;
+	while (Record[Index].Rip != InstPointer && count < FUZZ_RECORD_LEN){
+		Index = ((Index + 1) % FUZZ_RECORD_LEN);
+		count++;
+	}
+	//return if found moved one
+	if (count < FUZZ_RECORD_LEN)
+	{
+		return Record[Index].DesRegId;
+	}
+	
+	//cannot find that, it should be moved to other place
+	//find a empty slot
+	Index = UtilPfnFromVa((void*)InstPointer) % FUZZ_RECORD_LEN;
+	count = 0;
+	while (Record[Index].Rip && count < FUZZ_RECORD_LEN){
+		Index = ((Index + 1) % FUZZ_RECORD_LEN);
+		count++;
+	}
+
+	//cannot find any free slot
+	if(Index < FUZZ_RECORD_LEN)
+	{
+		//sth wrong.
+		return 0;
+	}
+
+	//Found a free slot, moving the collision one to other place.
+	Record[Index].Rip		= InstPointer;
+	Record[Index].DesRegId  = GetInstructionDestRegister(
+		Context,
+		InstPointer,
+		InstLen
+	); 
+
+ 	return Record[Index].DesRegId;
+}
+
+bool StartFuzz(
+	GpRegisters*  Context,
+	ULONG_PTR InstPointer,
+	ULONG_PTR MmioAddress,
+	ULONG		  InstLen,
+	FUZZ*		  fuzzer
+)
+{
+	bool ret = false;
+	ULONG width = 0;
+	ULONG RegId = GetRegIndexByRip(Context, InstPointer, InstLen);
+	if (!RegId)
+	{
+		return ret;
+	}
+	
+	char* reg = (char*)SelectRegister(Context, RegId, &width);
+	if (!reg)
+	{
+		return ret;
+	}
+			
+	switch (width)
+	{
+	case 1:
+		//Don't fuzz on 8bit access. '/
+		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Before: %d reg= %p", RegId, *(ULONG_PTR*)reg);
+		///*(ULONG64*)reg |= DUMMP_FUZZER8;
+		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] After: %d reg= %p", RegId, *(ULONG_PTR*)reg);
+		///ret = true;
+		break;
+	case 2:
+		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Before: %d reg= %p", RegId, *(ULONG_PTR*)reg);
+		///*(ULONG64*)reg |= DUMMP_FUZZER16;
+		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] After: %d reg= %p", RegId, *(ULONG_PTR*)reg);
+		///ret = true;
+		break;
+	case 4:
+		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Before: %d reg= %p", RegId, *(ULONG_PTR*)reg);
+		///*(ULONG64*)reg |= DUMMP_FUZZER32;
+		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] After: %d reg= %p", RegId, *(ULONG_PTR*)reg);
+		///ret = true;
+		break;
+	case 8:
+		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Before: %d reg= %p", RegId, *(ULONG_PTR*)reg);
+		///*(ULONG64*)reg |= DUMMP_FUZZER64;
+		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] After: %d reg= %p",  RegId, *(ULONG_PTR*)reg);
+		///ret = true;
+		break;
+	default:
+			break;
+	}
 
 	return ret;
 }
