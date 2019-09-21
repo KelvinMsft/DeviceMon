@@ -131,7 +131,7 @@ bool SpiHandleMmioAccessCallback(
 
 	if (Access == 0x1 )
 	{
-		StartFuzz(Context, InstPointer, MmioAddress, InstLen, &SpiFuzzer);
+	//	StartFuzz(Context, InstPointer, MmioAddress, InstLen, &SpiFuzzer);
 	}
 
 	return false;
