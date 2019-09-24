@@ -414,21 +414,21 @@ bool StartFuzz(
 		break;
 	case 2:
 		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Word Before: %d reg= %x", RegId, *(USHORT*)reg);
-		*(USHORT*)reg |= DUMMP_FUZZER16_F;
+		//*(USHORT*)reg |= DUMMP_FUZZER16_F;
 		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Word After: %d reg= %x", RegId, *(USHORT*)reg);
-		ret = true;
+		//ret = true;
 		break;
 	case 4:
 		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Dword Before: %d reg= %x", RegId, *(ULONG*)reg);
-		*(ULONG*)reg |= DUMMP_FUZZER32_F;
+		//*(ULONG*)reg |= DUMMP_FUZZER32_F;
 		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Dword After: %d reg= %x", RegId, *(ULONG*)reg);
-		ret = true;
+		//ret = true;
 		break;
 	case 8:
 		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Qword Before: %d reg= %p", RegId, *(ULONG_PTR*)reg);
-		*(ULONG64*)reg |= DUMMP_FUZZER64_F;
+		//*(ULONG64*)reg |= DUMMP_FUZZER64_F;
 		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Qword After: %d reg= %p",  RegId, *(ULONG_PTR*)reg);
-		ret = true;
+		//ret = true;
 		break;
 	default:
 			break;
