@@ -223,6 +223,17 @@ void* SelectRegister(
 	case X86_REG_R15:
 		reg = &Context->r15;
 	break;
+	case X86_REG_BP:
+	case X86_REG_EBP:
+	case X86_REG_RBP:
+		reg = &Context->bp;
+	break;
+
+	case X86_REG_SP:
+	case X86_REG_ESP:
+	case X86_REG_RSP:
+		reg = &Context->sp;
+	break;
 	default:
 		break;
 	}
@@ -357,11 +368,7 @@ ULONG GetRegIndexByRip(
 	}
 
 	//cannot find any free slot
-	if(Index < FUZZ_RECORD_LEN)
-	{
-		//sth wrong.
-		return 0;
-	}
+	NT_ASSERT(Index < FUZZ_RECORD_LEN);
 
 	//Found a free slot, moving the collision one to other place.
 	Record[Index].Rip		= InstPointer;
@@ -400,28 +407,28 @@ bool StartFuzz(
 	{
 	case 1:
 		//Don't fuzz on 8bit access. '/
-		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Before: %d reg= %p", RegId, *(ULONG_PTR*)reg);
-		///*(ULONG64*)reg |= DUMMP_FUZZER8;
-		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] After: %d reg= %p", RegId, *(ULONG_PTR*)reg);
-		///ret = true;
+		//HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Before: %d reg= %p", RegId, *(ULONG_PTR*)reg);
+		//*(UCHAR*)reg |= DUMMP_FUZZER8;
+		//HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] After: %d reg= %p", RegId, *(ULONG_PTR*)reg);
+		//ret = true;
 		break;
 	case 2:
-		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Before: %d reg= %p", RegId, *(ULONG_PTR*)reg);
-		///*(ULONG64*)reg |= DUMMP_FUZZER16;
-		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] After: %d reg= %p", RegId, *(ULONG_PTR*)reg);
-		///ret = true;
+		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Word Before: %d reg= %x", RegId, *(USHORT*)reg);
+		*(USHORT*)reg |= DUMMP_FUZZER16_F;
+		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Word After: %d reg= %x", RegId, *(USHORT*)reg);
+		ret = true;
 		break;
 	case 4:
-		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Before: %d reg= %p", RegId, *(ULONG_PTR*)reg);
-		///*(ULONG64*)reg |= DUMMP_FUZZER32;
-		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] After: %d reg= %p", RegId, *(ULONG_PTR*)reg);
-		///ret = true;
+		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Dword Before: %d reg= %x", RegId, *(ULONG*)reg);
+		*(ULONG*)reg |= DUMMP_FUZZER32_F;
+		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Dword After: %d reg= %x", RegId, *(ULONG*)reg);
+		ret = true;
 		break;
 	case 8:
-		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Before: %d reg= %p", RegId, *(ULONG_PTR*)reg);
-		///*(ULONG64*)reg |= DUMMP_FUZZER64;
-		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] After: %d reg= %p",  RegId, *(ULONG_PTR*)reg);
-		///ret = true;
+		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Qword Before: %d reg= %p", RegId, *(ULONG_PTR*)reg);
+		*(ULONG64*)reg |= DUMMP_FUZZER64_F;
+		HYPERPLATFORM_LOG_DEBUG_SAFE("[Fuzz] Qword After: %d reg= %p",  RegId, *(ULONG_PTR*)reg);
+		ret = true;
 		break;
 	default:
 			break;

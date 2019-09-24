@@ -361,7 +361,7 @@ static void VmmpHandleMonitorTrap(
 
 	NT_ASSERT(ept_pt_entry);
 
-	HYPERPLATFORM_LOG_DEBUG("[MTF] Rip= %p Entry= %p \r\n", Rip, ept_pt_entry->all);
+	//HYPERPLATFORM_LOG_DEBUG("[MTF] Rip= %p Entry= %p \r\n", Rip, ept_pt_entry->all);
 	
 	ept_pt_entry->fields.execute_access = true;
 	ept_pt_entry->fields.write_access = false;

@@ -162,7 +162,7 @@ extern "C"
 		MARVELL_NIC_BUS_NUMBER,
 		MARVELL_NIC_DEVICE_NUMBER,
 		MARVELL_NIC_FUNC_NUMBER ,
-		{
+		{ 
 			MARVELL_NIC_BAR_LOWER_OFFSET,
 			MARVELL_NIC_BAR_HIGH_OFFSET,
 			MARVELL_NIC_BAR1_LOWER_OFFSET,
@@ -174,7 +174,8 @@ extern "C"
 		{ 0 , 0 , 0 , 0 , 0 , 0 },
 		IntelNicHandleMmioAccessCallback,
 		{
-			PCI_BAR_64BIT ,	PCI_BAR_64BIT ,
+			PCI_BAR_64BIT ,	
+			PCI_BAR_64BIT ,
 			0 , 0 , 0 , 0 ,
 		},
 		IntelNicHandleBarCallback,
@@ -318,7 +319,7 @@ extern "C"
 			Entry->fields.read_access = false;
 			Entry->fields.write_access = false;
 			Entry->fields.execute_access = true;
-
+			UtilInveptGlobal();
 			PciBarSpacePa = (ULONG)GuestPhysAddr + PAGE_SIZE * k;
 		}
 	}
@@ -344,7 +345,7 @@ extern "C"
 			Entry->fields.read_access	 = true;
 			Entry->fields.write_access	 = true;
 			Entry->fields.execute_access = true;
-
+			UtilInveptGlobal();
 			PciBarSpacePa = (ULONG)GuestPhysAddr + PAGE_SIZE * k;
 		}
 	}
@@ -416,17 +417,17 @@ extern "C"
 			for (int BarOffsetIndex = 0; BarIndex <  g_MonitorDeviceList[i].BarCount; BarOffsetIndex++, BarIndex++)
 			{ 
 				DmInitBarInfo(&g_MonitorDeviceList[i], BarOffsetIndex, BarIndex);
-				
+				if (g_MonitorDeviceList[i].BarAddressWidth[BarIndex] & PCI_BAR_64BIT)
+				{
+					//Lower - Upper by default.
+					BarOffsetIndex++;
+				}
+
 				if (!g_MonitorDeviceList[i].BarAddress[BarIndex] || !g_MonitorDeviceList[i].BarLimit[BarIndex] ||
 					((g_MonitorDeviceList[i].BarAddress[BarIndex] & 0xFFFFF00000000000) == 0xFFFFF00000000000) ||
 					(g_MonitorDeviceList[i].BarLimit[BarIndex] < g_MonitorDeviceList[i].BarAddress[BarIndex]))
 				{
 					HYPERPLATFORM_LOG_DEBUG("- [PCI] PCIBAR Found Error \r\n");
-					if (g_MonitorDeviceList[i].BarAddressWidth[BarIndex] & PCI_BAR_64BIT)
-					{
-						//Lower - Upper by default.
-						BarOffsetIndex++;
-					}
 					continue;
 				}
 	
@@ -440,12 +441,6 @@ extern "C"
 				InvalidateEptPages(ept_data, g_MonitorDeviceList[i].BarAddress[BarIndex], 
 					(ULONG)(g_MonitorDeviceList[i].BarLimit[BarIndex] - g_MonitorDeviceList[i].BarAddress[BarIndex])
 				);
- 
-				if (g_MonitorDeviceList[i].BarAddressWidth[BarIndex] & PCI_BAR_64BIT)
-				{
-					//Lower - Upper by default.
-					BarOffsetIndex++;
-				}
 			}
 		}
 		return STATUS_SUCCESS;
@@ -461,38 +456,30 @@ extern "C"
 			for (int BarOffsetIndex = 0; BarIndex < g_MonitorDeviceList[i].BarCount; BarOffsetIndex++, BarIndex++)
 			{	
 				DmInitBarInfo(&g_MonitorDeviceList[i], BarOffsetIndex, BarIndex);
-				
+				if (g_MonitorDeviceList[i].BarAddressWidth[BarIndex] & PCI_BAR_64BIT)
+				{
+					BarOffsetIndex++;
+				}
+
 				if (!g_MonitorDeviceList[i].BarAddress[BarIndex] || !g_MonitorDeviceList[i].BarLimit[BarIndex] ||
 					((g_MonitorDeviceList[i].BarAddress[BarIndex] & 0xFFFFF00000000000) == 0xFFFFF00000000000) ||
 					(g_MonitorDeviceList[i].BarLimit[BarIndex] < g_MonitorDeviceList[i].BarAddress[BarIndex]))
 				{
 					HYPERPLATFORM_LOG_DEBUG("- [PCI] PCIBAR Found Error \r\n"); 
-					if (g_MonitorDeviceList[i].BarAddressWidth[BarIndex] & PCI_BAR_64BIT)
-					{
-						//Lower - Upper by default.
-						BarOffsetIndex++;
-					}
 					continue;
 				}
-
 
 				HYPERPLATFORM_LOG_DEBUG("[PCI] Start= %p Limit= %p MMIO Size= %x Spanned Page= %d \r\n",
 					g_MonitorDeviceList[i].BarAddress[BarIndex],
 					g_MonitorDeviceList[i].BarLimit[BarIndex],
 					g_MonitorDeviceList[i].BarLimit[BarIndex] - g_MonitorDeviceList[i].BarAddress[BarIndex],
-					ADDRESS_AND_SIZE_TO_SPAN_PAGES(0, g_MonitorDeviceList[i].BarLimit[BarIndex] - g_MonitorDeviceList[i].BarAddress[BarIndex])
+					ADDRESS_AND_SIZE_TO_SPAN_PAGES(0, 
+						g_MonitorDeviceList[i].BarLimit[BarIndex] - g_MonitorDeviceList[i].BarAddress[BarIndex])
 				);
 
-				ValidateEptPages(ept_data, g_MonitorDeviceList[i].BarAddress[BarIndex], 
+				ValidateEptPages(ept_data, g_MonitorDeviceList[i].BarAddress[BarIndex],
 					(ULONG)(g_MonitorDeviceList[i].BarLimit[BarIndex] - g_MonitorDeviceList[i].BarAddress[BarIndex])
 				);
-
-				if (g_MonitorDeviceList[i].BarAddressWidth[BarIndex] & PCI_BAR_64BIT)
-				{
-					//Lower - Upper by default.
-					BarOffsetIndex++;
-				}
- 
 			}
 		}
 		return status;

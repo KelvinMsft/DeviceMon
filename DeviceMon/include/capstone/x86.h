@@ -374,7 +374,7 @@ typedef struct cs_x86 {
 	/// Number of operands of this instruction,
 	/// or 0 when instruction has no operand.
 	uint8_t op_count;
-
+ 
 	cs_x86_op operands[8];	///< operands for this instruction.
 
 	cs_x86_encoding encoding;  ///< encoding information
