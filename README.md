@@ -1,6 +1,6 @@
 # DeviceMon
 
-DeviceMon is a Windows Driver that intercepts the communication between your PCI devices and kernel driver.
+DeviceMon is a Windows Driver that intercepts the communication between your PCI devices and kernel driver. acting as software JTAG
 
 # Description
  DeviceMon will be an on-going development to support more PCI devices.  Currently it supports monitoring SPI controller behavior.  With SPI behavior monitoring, anyone who sends a cycle to the SPI controller will captured by DeviceMon.  This means theoretically Flash ROM attacks could be captured by DeviceMon. By intercepting a MMIO translation path, the communication between driver and devices could be easily exposed. Also, as an example, support for 64bit BAR address - Intel ME controller and support for USB xHCI controller 
