@@ -1,5 +1,8 @@
 # DeviceMon
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/633f88a4151f4a39a546b494cb87d9e5)](https://app.codacy.com/gh/Kelvinhack/DeviceMon?utm_source=github.com&utm_medium=referral&utm_content=Kelvinhack/DeviceMon&utm_campaign=Badge_Grade)
+
+
 DeviceMon is a Windows Driver that intercepts the communication between your PCI devices and kernel driver, acting as software JTAG
 
 # Description
